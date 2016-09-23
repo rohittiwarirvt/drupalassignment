@@ -1,0 +1,33 @@
+name = approver
+description =  "Approver module"
+core = 7.x
+version = 1
+files[] = approver.module
+
+1.  create roles
+2. create levels
+3. assigne roles to levelts
+4. add user to roeles
+
+assignment
+1.
+2. approver and roles
+
+
+drush site-install standard --db-url='mysql://root:bric_123@localhost/webonise' --site-name=Approver --account-name=admin --account-pass=admin
+
+vocabulary levels
+level1
+ level2
+   level3
+    level4
+
+or create roles
+
+user can have anyof the level
+
+send for approver to next level
+curent level next
+
+flag module or rules module
+drush en panels views module_filter entityreference rules_link

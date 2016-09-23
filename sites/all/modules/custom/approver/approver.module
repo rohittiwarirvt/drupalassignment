@@ -1,0 +1,54 @@
+<?php
+/**
+ * hook_presave
+ */
+
+
+function approver_node_presave($node){
+    $is_approver_enabled = api_approver_module_is_enabled($node->type)
+  if ( $is_approver_enabled) {
+
+  }
+
+}
+
+
+function api_approver_module_is_enabled($node_type) {
+  if(in_array($node_type, array('article')) {
+    return true;
+  }
+}
+
+function api_get_user_of_level($options) {
+  $approver_machine_name = 'appovement_levels';
+  $approver_level_vocab = taxonomy_vocabulary_machine_name_load($approver_machine_name);
+
+  $approver_heirarchy = taxonomy_get_tree($approver_level_vocab->vid);
+
+  $select_term_level = isset($options['level']) ? $approver_heirarchy[$options['level'] - 1]: $approver_heirarchy[0];
+  $query = new EntityFieldQuery();
+  $query->entityCondition('entity_type', 'user')
+            ->fieldCondition('field_user_level', 'tid', $select_term_level->tid , '=');
+
+  $result = $query->execute();
+
+  if (isset($result['user'])) {
+    return $result['user'];
+  }
+
+}
+
+$options['level'] = 1;
+ $approver_machine_name = 'appovement_levels';
+  $approver_level_vocab = taxonomy_vocabulary_machine_name_load($approver_machine_name);
+
+  $approver_heirarchy = taxonomy_get_tree($approver_level_vocab->vid);
+
+  $select_term_level = isset($options['level']) ? $approver_heirarchy[$options['level'] - 1]: $approver_heirarchy[0];
+  $query = new EntityFieldQuery();
+  $query->entityCondition('entity_type', 'user')
+      ->fieldCondition('field_user_level', $select_term_level, $select_term_level ->tid , '=');
+
+  $result = $query->execute();
+
+dsm($result);
