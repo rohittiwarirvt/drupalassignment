@@ -4,51 +4,76 @@
  */
 
 
-function approver_node_presave($node){
-    $is_approver_enabled = api_approver_module_is_enabled($node->type)
-  if ( $is_approver_enabled) {
+// function approver_node_presave($node){
+//     $is_approver_enabled = api_approver_module_is_enabled($node->type)
+//   if ( $is_approver_enabled) {
 
-  }
+//   }
 
+// }
+
+
+// function api_approver_module_is_enabled($node_type) {
+//   if(in_array($node_type, array('article')) {
+//     return true;
+//   }
+// }
+
+// function api_get_user_of_level($options) {
+//   $approver_machine_name = 'appovement_levels';
+//   $approver_level_vocab = taxonomy_vocabulary_machine_name_load($approver_machine_name);
+
+//   $approver_heirarchy = taxonomy_get_tree($approver_level_vocab->vid);
+
+//   $select_term_level = isset($options['level']) ? $approver_heirarchy[$options['level'] - 1]: $approver_heirarchy[0];
+//   $query = new EntityFieldQuery();
+//   $query->entityCondition('entity_type', 'user')
+//             ->fieldCondition('field_user_level', 'tid', $select_term_level->tid , '=');
+
+//   $result = $query->execute();
+
+//   if (isset($result['user'])) {
+//     return $result['user'];
+//   }
+
+// }
+
+function approver_views_post_execute(&$view) {
+  //  dsm($query);
+   // dsm($view);
+  // $show_query = false;
+  //       if ($show_query) {
+  //         $query = $view->build_info['query'];
+  //         // Only the sql default class has a method getArguments.
+  //         $quoted = array();
+  //         //dsm(get_class($view->query));
+  //         if (get_class($view->query) == 'views_plugin_query_default') {
+  //           //dsm("dasf");
+  //           dsm($query);
+  //           $quoted = $query->getArguments();
+  //           $connection = Database::getConnection();
+  //           foreach ($quoted as $key => $val) {
+  //             if (is_array($val)) {
+  //               $quoted[$key] = implode(', ', array_map(array($connection, 'quote'), $val));
+  //             }
+  //             else {
+  //               $quoted[$key] = $connection->quote($val);
+  //             }
+  //           }
+  //         }
+  //         $rows['query'][] = array('<strong>' . t('Query') . '</strong>', '<pre>' . check_plain(strtr($query, $quoted)) . '</pre>');
+  //         if (!empty($view->additional_queries)) {
+  //           $queries = '<strong>' . t('These queries were run during view rendering:') . '</strong>';
+  //           foreach ($view->additional_queries as $query) {
+  //             if ($queries) {
+  //               $queries .= "\n";
+  //             }
+  //             $queries .= t('[@time ms]', array('@time' => intval($query[1] * 100000) / 100)) . ' ' . $query[0];
+  //           }
+
+  //           $rows['query'][] = array('<strong>' . t('Other queries') . '</strong>', '<pre>' . $queries . '</pre>');
+  //         }
+  //       }
+
+       // print_r($rows['query']);
 }
-
-
-function api_approver_module_is_enabled($node_type) {
-  if(in_array($node_type, array('article')) {
-    return true;
-  }
-}
-
-function api_get_user_of_level($options) {
-  $approver_machine_name = 'appovement_levels';
-  $approver_level_vocab = taxonomy_vocabulary_machine_name_load($approver_machine_name);
-
-  $approver_heirarchy = taxonomy_get_tree($approver_level_vocab->vid);
-
-  $select_term_level = isset($options['level']) ? $approver_heirarchy[$options['level'] - 1]: $approver_heirarchy[0];
-  $query = new EntityFieldQuery();
-  $query->entityCondition('entity_type', 'user')
-            ->fieldCondition('field_user_level', 'tid', $select_term_level->tid , '=');
-
-  $result = $query->execute();
-
-  if (isset($result['user'])) {
-    return $result['user'];
-  }
-
-}
-
-$options['level'] = 1;
- $approver_machine_name = 'appovement_levels';
-  $approver_level_vocab = taxonomy_vocabulary_machine_name_load($approver_machine_name);
-
-  $approver_heirarchy = taxonomy_get_tree($approver_level_vocab->vid);
-
-  $select_term_level = isset($options['level']) ? $approver_heirarchy[$options['level'] - 1]: $approver_heirarchy[0];
-  $query = new EntityFieldQuery();
-  $query->entityCondition('entity_type', 'user')
-      ->fieldCondition('field_user_level', $select_term_level, $select_term_level ->tid , '=');
-
-  $result = $query->execute();
-
-dsm($result);
