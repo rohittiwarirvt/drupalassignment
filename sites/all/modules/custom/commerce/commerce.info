@@ -1,0 +1,10 @@
+name = Commerce
+package = Commerce
+core = 7.x
+version = 7.x-1.x
+description = "Learning commerce you see"
+
+dependecies[] = entity
+dependencies[] =  system
+dependencies[] = rules
+

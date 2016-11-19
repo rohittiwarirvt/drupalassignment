@@ -1,0 +1,14 @@
+<?php
+
+function commerce_install() {
+  $weight = db_select('system', 's', array())
+            ->fields('s', array('weight'))
+            ->condition('name','field')
+            ->execute()
+            ->fetchField();
+
+  db_update('system')
+      ->fields(array('weight' => $weight + 1))
+        ->condition('name', 'commerce', '=')
+        ->execute();
+}
