@@ -27,19 +27,35 @@ function commerce_currencies($enabled = FALSE, $reset = FALSE) {
         'conversion_rate' => 1,);
       module_load_include('inc', 'commerce', 'includes/commerce.currencies');
       $currencies['all'] = module_invoke_all('commerce_currency_info');
-      drupal_alter('commerce_currency_info', $currency['all'], $language->$language);
+      drupal_alter('commerce_currency_info', $currency['all'], $language->language);
 
-      foreach ($currency['all'] as $currency_code => $currency) {
+      foreach ($currencies['all'] as $currency_code => $currency) {
         $currency['all'][$currency_code] = array_merge($defaults, $currency);
       }
 
       ksort($currency['all']);
-      cache_set('commerce_currencies:' . $language->$language, $currencies['all']);
+      cache_set('commerce_currencies:' . $language->language, $currencies['all']);
     }
 
-    $enabled_currencies = array_diff(array_values(variable_set('commerce_enabled_currencies', array('USD' => 'USD'))), array(0));
+    $enabled_currencies = array_diff(array_values(variable_get('commerce_enabled_currencies', array('USD' => 'USD'))), array(0));
     $currencies['enabled'] = array_intersect_key($currencies['all'], drupal_map_assoc($enabled_currencies));
   }
 
   return $enabled ? $currencies['enabled'] : $currencies['all'];
+}
+
+function commerce_default_currency() {
+  $currency_code = variable_get('commerce_default_currency', 'USD');
+  drupal_alter('commerce_default_currency', $currency_code);
+  return $currency_code;
+}
+
+function commerce_permission() {
+  return array(
+      'configure store' => array(
+          'title' => t('Configure Store Settings'),
+          'description' => t('Allows user to update store currency and contact settings.'),
+          'restrict access' => TRUE,
+        )
+    );
 }

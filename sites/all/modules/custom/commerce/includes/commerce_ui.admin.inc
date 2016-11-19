@@ -4,7 +4,7 @@
 function commerce_currency_settings_form($from, &$form_state) {
   $options = array();
 
-  foreach (commerce_currency(FALSE, TRUE) as $currency_code => $currency) {
+  foreach (commerce_currencies(FALSE, TRUE) as $currency_code => $currency) {
       $options[$currency_code] = t("@code - !name", array('@code' => $currency['code'], '!name' => $currency['symbol']));
   }
 
@@ -39,5 +39,5 @@ function commerce_currency_settings_form($from, &$form_state) {
 
 function commerce_currency_settings_form_validate($form, &$form_state) {
   $default = $form_state['values']['commerce_default_currency'];
-  $form_state['values']['commerce_enabled_currency'][$default] = $default;
+  $form_state['values']['commerce_enabled_currencies'][$default] = $default;
 }
