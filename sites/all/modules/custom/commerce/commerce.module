@@ -1,1 +1,45 @@
 <?php
+
+
+function commerce_currencies($enabled = FALSE, $reset = FALSE) {
+  global $language;
+
+  $currencies =  &drupal_static(__FUNCTION__);
+
+  if (!isset($currencies) || $reset) {
+
+    if (!$reset && $currencies_cached = cache_get('commerce_currencies:' . $language->$language)) {
+      $currencies['all'] = $currencies_cached->data;
+    } else {
+      $defaults = array(
+         'symbol' => '',
+        'minor_unit' => '',
+        'decimals' => 2,
+        'rounding_step' => 0,
+        'thousands_separator' => ',',
+        'decimal_separator' => '.',
+        'symbol_placement' => 'hidden',
+        'symbol_spacer' => ' ',
+        'code_placement' => 'after',
+        'code_spacer' => ' ',
+        'format_callback' => '',
+        'conversion_callback' => '',
+        'conversion_rate' => 1,);
+      module_load_include('inc', 'commerce', 'includes/commerce.currencies');
+      $currencies['all'] = module_invoke_all('commerce_currency_info');
+      drupal_alter('commerce_currency_info', $currency['all'], $language->$language);
+
+      foreach ($currency['all'] as $currency_code => $currency) {
+        $currency['all'][$currency_code] = array_merge($defaults, $currency);
+      }
+
+      ksort($currency['all']);
+      cache_set('commerce_currencies:' . $language->$language, $currencies['all']);
+    }
+
+    $enabled_currencies = array_diff(array_values(variable_set('commerce_enabled_currencies', array('USD' => 'USD'))), array(0));
+    $currencies['enabled'] = array_intersect_key($currencies['all'], drupal_map_assoc($enabled_currencies));
+  }
+
+  return $enabled ? $currencies['enabled'] : $currencies['all'];
+}
