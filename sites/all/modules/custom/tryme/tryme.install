@@ -1,0 +1,6 @@
+<?php
+
+function commerce_update_7100() {
+  print_r("this is it");
+  drupal_set_message(t("I am executong"), 'status', FALSE);
+}
