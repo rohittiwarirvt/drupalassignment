@@ -9,7 +9,7 @@ function commerce_currency_settings_form($from, &$form_state) {
   }
 
 
-  $form['default_currency'] = array(
+  $form['commerce_default_currency'] = array(
     '#type' => 'select',
     '#title' => t('Default store currency'),
     '#description' => t('The default store currency will be used as the default for all price fields.'),
