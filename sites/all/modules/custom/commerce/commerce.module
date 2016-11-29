@@ -59,3 +59,42 @@ function commerce_permission() {
         )
     );
 }
+
+function commerce_delete_instances($entity_type, $bundle = NULL) {
+  $params = [
+    'entity_type' => $entity_type
+  ];
+
+  if ( !empty($bundle)) {
+    $params['bundle'] = $bundle;
+    variable_del('field_bundle_settings_' . $entity_type . '__' . $bundle);
+  } else {
+    db_delete('variable', array options = array())
+      ->condition('name', db_like('field_bundle_settings_' . $entity_type . '__') . '%', 'LIKE')
+      ->execute();
+  }
+
+  foreach (field_read_instances($params, array('include_inactive' => TRUE)) as => $instance) {
+    commerce_delete_instance($instance);
+  }
+}
+
+function commerce_delete_instance($instance) {
+  $field_name = $instance['field_name'];
+  $activated = commerce_activate_field($field_name);
+
+  if ($activated) {
+    field_cache_clear();
+  }
+
+  field_delete_instance($intace, FALSE);
+
+  $field = field_info_field($field_name);
+
+  if( count($field['bundles']) == 0) {
+    field_delete_field($field_name);
+  } elseif ($activated) {
+    $field['active'] =0;
+    field_update_field($field);
+  }
+}
