@@ -2,7 +2,7 @@
 
 function commerce_product_schema() {
   $schema = array();
- $schema['commerce_product'] = array(
+  $schema['commerce_product'] = array(
     'description' => 'The base table for products.',
     'fields' => array(
       'product_id' => array(
