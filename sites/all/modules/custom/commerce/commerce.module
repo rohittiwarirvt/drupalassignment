@@ -69,12 +69,12 @@ function commerce_delete_instances($entity_type, $bundle = NULL) {
     $params['bundle'] = $bundle;
     variable_del('field_bundle_settings_' . $entity_type . '__' . $bundle);
   } else {
-    db_delete('variable', array options = array())
+    db_delete('variable')
       ->condition('name', db_like('field_bundle_settings_' . $entity_type . '__') . '%', 'LIKE')
       ->execute();
   }
 
-  foreach (field_read_instances($params, array('include_inactive' => TRUE)) as => $instance) {
+  foreach (field_read_instances($params, array('include_inactive' => TRUE)) as $instance) {
     commerce_delete_instance($instance);
   }
 }

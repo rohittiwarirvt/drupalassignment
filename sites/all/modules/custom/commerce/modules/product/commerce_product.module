@@ -1,0 +1,115 @@
+<?php
+
+
+function commerce_product_entity_info() {
+	$return = [
+	 'commerce_product' => [
+	 	'label' => t('Commerce Product'),
+	 	'controller class' => 'CommerceProductEntityController',
+	 	'base table' => 'commerce_product',
+	 	'revision_table' => 'commerce_product_revision',
+	 	'fieldable' => TRUE,
+	 	'entity keys' => [
+	 		'id' => 'product_id',
+	 		'bundle' => 'type',
+	 		'label' => 'title',
+	 		'revision' => 'revision_id',
+	 		'language' => 'language'
+	 	],
+	 	'bundle keys' => [
+	 		'bundle' => 'type'
+	 	],
+	 	'bundles' => [
+
+	 	],
+	 	'load hook' => 'commerce_product_load',
+	 	'view modes' => [
+	 		'full' => [
+	 			'label' => t('Admin display'),
+	 			'custom settings' => FALSE
+	 		],
+
+	 	],
+	 	'uri callback' => 'commerce_product_uri',
+	 	'metadata contoller class' => '',
+	 	'token-type' => 'commerce-product',
+	 	'access callback' => 'commmerce_entity_access',
+	 	'access arguments' => [
+	 		'user key' => 'uid',
+	 		'access tag' => 'commmerce_product_acess'
+	 	] ,
+	 	'permission labels' => [
+	 		'singular' => t('product'),
+	 		'plural' => t('products'),
+	 	],
+	 	'redirect' => FALSE,
+	 	      // Add translation support.
+	      'translation' => array(
+	        'locale' => TRUE,
+	        'entity_translation' => array(
+	          'class' => 'EntityTranslationCommerceProductHandler',
+	          'bundle callback' => 'commerce_product_entity_translation_supported_type',
+	          'default settings' => array(
+	            'default_language' => LANGUAGE_NONE,
+	            'hide_language_selector' => FALSE,
+	          ),
+	        ),
+	      ),
+
+	            // Add title replacement support for translations.
+	      'field replacement' => array(
+	        'title' => array(
+	          'field' => array(
+	            'type' => 'text',
+	            'cardinality' => 1,
+	            'translatable' => TRUE,
+	          ),
+	          'instance' => array(
+	            'label' => t('Title'),
+	            'required' => TRUE,
+	            'settings' => array(
+	              'text_processing' => 0,
+	            ),
+	            'widget' => array(
+	              'weight' => -5,
+	            ),
+	          ),
+	        ),
+	      ),
+	 ],
+	];
+
+	$return['commerce_product']['bundles'] = [];
+
+	foreach (commerce_product_type_get_name() as $type => $name) {
+		$return['commerce_product']['bundles'][$type] = [
+			'label' => $name
+		];
+	}
+
+	return $return;
+}
+
+
+
+function commmerce_product_uri($product) {
+
+	foreach (module_implements('commerce_product_uri') as $module) {
+		$uri = module_invoke($module, 'commerce_product_uri', $product);
+
+		if (!empty($uri)) {
+			return $uri;
+		}
+	}
+
+	return NULL;
+}
+
+function commerce_product_type_get_name() {
+
+}
+
+
+function commerce_product_types() {
+
+}
