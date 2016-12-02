@@ -1,0 +1,53 @@
+<?php
+
+/**
+ * Implements of hook_schema
+ */
+function rh_subscribe_schema() {
+  $schema['rh_subscribe'] = array(
+    'description' => 'The base table for redhat project subscribe.',
+    'fields' => array(
+      'sid' => array(
+        'description' => 'The primary identifier for a subscription.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'nid' => array(
+        'description' => 'The project node nid',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'name' => array(
+        'description' => 'User full name',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'mail' => array(
+        'description' => 'User email',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'hash' => array(
+        'description' => 'User unique key',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'created' => array(
+        'description' => 'Unix timestamp',
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('sid'),
+  );
+  return $schema;
+}

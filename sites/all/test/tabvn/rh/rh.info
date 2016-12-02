@@ -1,0 +1,4 @@
+name = Redhat
+description = Redhat custom module.
+core = 7.x
+package = Redhat
