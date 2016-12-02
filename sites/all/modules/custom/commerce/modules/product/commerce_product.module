@@ -105,11 +105,42 @@ function commmerce_product_uri($product) {
 	return NULL;
 }
 
-function commerce_product_type_get_name() {
+function commerce_product_type_get_name($type = NULL) {
+	$product_types = commerce_product_types();
 
+	if (!empty($type)) {
+		if(isset($product_types[$type])) {
+			return $product_types[$type]['name'];
+		} else {
+			return FALSE;
+		}
+	}
+
+	$product_type_names = [];
+
+	foreach ($product_types as $key => $value) {
+		$product_type_names[$key] = $value['name'];
+	}
+
+	return $product_type_names;
 }
 
 
 function commerce_product_types() {
+	$product_types = &drupal_static(__FUNCTION__);
+	if (!isset($product_types)) {
+		$product_types = [];
 
+		foreach (module_implements('commerce_product_type_info') as $module) {
+			foreach ($module_invoke($module, 'commerce_product_type_info') as $type => $product_type) {
+				$product_types += [
+				  'module' => $module,
+				  'revision' => 1,
+				];
+				$product_types[$type] = $product_type; 
+			}
+		}
+		drupal_alter('commerce_product_type_info', $product_types);
+	}
+	return $product_types;
 }
