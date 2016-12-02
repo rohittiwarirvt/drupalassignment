@@ -1,0 +1,448 @@
+<?php
+
+
+/**
+ * Implements of hook_menu
+ */
+
+function rh_subscribe_menu() {
+
+  $items['subscribe/%ctools_js/%'] = array(
+    'title' => 'Subscribe',
+    'page callback' => 'rh_subscribe_subscribe_page',
+    'page arguments' => array(1, 2),
+    'access arguments' => array('subscribe project'),
+    'type' => MENU_CALLBACK,
+    'file' => 'rh_subscribe.pages.inc',
+  );
+  $items['unsubscribe/%'] = array(
+    'title' => 'Unsubscribe',
+    'page callback' => 'rh_subscribe_unsubscribe_page',
+    'page arguments' => array(1),
+    'access arguments' => array('unsubscribe project'),
+    'type' => MENU_CALLBACK,
+    'file' => 'rh_subscribe.pages.inc',
+  );
+
+  return $items;
+}
+
+/**
+ * Implements of hook_permission()
+ */
+
+function rh_subscribe_permission() {
+  return array(
+    'subscribe project' => array(
+      'title' => t('Subscribe project'),
+      'description' => t('Allow user subscribe to the project.'),
+    ),
+    'unsubscribe project' => array(
+      'title' => t('Un-subscribe project'),
+      'description' => t('Allow user un-subscribe to the project.'),
+    ),
+    'admin subscribers' => array(
+      'title' => t('Administer subscribers'),
+      'description' => t('Access management of subscribers.'),
+    ),
+  );
+}
+
+/**
+ * Return name of user
+ */
+
+function rh_subscribe_get_name() {
+
+  global $user;
+  if (!$user->uid) {
+    return '';
+  }
+  $account = user_load($user->uid);
+  $name = field_get_items('user', $account, 'field_name');
+  return isset($name[0]['value']) ? $name[0]['value'] : '';
+}
+
+/**
+ * Check user if subscribed
+ */
+
+function rh_subscribe_check($mail, $nid) {
+
+  $result = db_select('rh_subscribe', 's')
+    ->fields('s', array('sid', 'mail'))
+    ->condition('s.mail', $mail)
+    ->condition('s.nid', $nid)
+    ->execute()
+    ->fetchField();
+
+  return $result;
+}
+
+/**
+ * Return project list for user selection
+ */
+
+function rh_subscribe_get_projects() {
+  $projects = array();
+  $result = db_select('node', 'n')
+    ->fields('n', array('nid', 'title'))
+    ->condition('n.type', 'project')
+    ->orderBy('n.nid', 'DESC')
+    ->execute()
+    ->fetchAll();
+
+  if (!empty($result)) {
+    foreach ($result as $k => $v) {
+      $projects[$v->nid] = $v->title;
+    }
+  }
+
+  return $projects;
+}
+
+/**
+ * Get subscribe info by sid
+ */
+
+function rh_subscribe_get($sid) {
+
+  $result = db_query('SELECT * FROM {rh_subscribe} s WHERE s.sid = :sid', array(':sid' => $sid))->fetchAssoc();
+
+  return $result;
+
+}
+
+
+function rh_subscribe_token_info() {
+  $type = array(
+    'name' => t('Subscribe'),
+    'description' => t('Tokens related to individual current subscribe.'),
+    'needs-data' => 'subscribe',
+  );
+
+  $subscribe['sid'] = array(
+    'name' => t("sid"),
+    'description' => t("The unique ID of the subscribe."),
+  );
+  $subscribe['name'] = array(
+    'name' => t("Name"),
+    'description' => t("The name of subscriber."),
+  );
+  $subscribe['mail'] = array(
+    'name' => t("Email"),
+    'description' => t("The email address of subscriber."),
+  );
+  $subscribe['nid'] = array(
+    'name' => t("nid"),
+    'description' => t("The project node nid that user subscribed to."),
+  );
+  $subscribe['node_title'] = array(
+    'name' => t("Node title"),
+    'description' => t("The project node title that user subscribed to."),
+  );
+  $subscribe['node_url'] = array(
+    'name' => t("nid"),
+    'description' => t("The project node URL that user subscribed to."),
+  );
+  $subscribe['hash'] = array(
+    'name' => t("hash"),
+    'description' => t("Subscribe hash key"),
+  );
+  $subscribe['unsubscribe_url'] = array(
+    'name' => t("Unsubscribe URL"),
+    'description' => t("The URL of Unsubscribe"),
+  );
+
+  return array(
+    'types' => array('subscribe' => $type),
+    'tokens' => array('subscribe' => $subscribe),
+  );
+}
+
+function rh_subscribe_tokens($type, $tokens, array $data = array(), array $options = array()) {
+  $url_options = array('absolute' => TRUE);
+  if (isset($options ['language'])) {
+    $url_options ['language'] = $options ['language'];
+    $language_code = $options ['language']->language;
+  }
+  else {
+    $language_code = NULL;
+  }
+  $sanitize = !empty($options ['sanitize']);
+
+  $replacements = array();
+
+  if ($type == 'subscribe' && !empty($data ['subscribe'])) {
+    $subscribe = $data ['subscribe'];
+
+    foreach ($tokens as $name => $original) {
+      switch ($name) {
+        // Simple key values on the node.
+        case 'sid':
+          $replacements [$original] = $subscribe->sid;
+          break;
+
+        case 'name':
+
+          $replacements [$original] = isset($subscribe->name) ? $subscribe->name : '';
+          break;
+
+        case 'mail':
+          $replacements [$original] = isset($subscribe->mail) ? $subscribe->mail : '';
+          break;
+
+        case 'nid':
+          $replacements [$original] = isset($subscribe->nid) ? $subscribe->nid : '';
+          break;
+        case 'node_url':
+          $replacements [$original] = isset($subscribe->nid) ? url('node/' . $subscribe->nid, array('absolute' => TRUE)) : '';
+          break;
+        case 'node_title':
+          $node = node_load($subscribe->nid);
+          if ($node) {
+            $replacements [$original] = $node->title;
+          }
+
+          break;
+        case 'hash':
+          $replacements [$original] = isset($subscribe->hash) ? $subscribe->hash : '';
+          break;
+
+        case 'unsubscribe_url':
+          $replacements [$original] = isset($subscribe->hash) ? url('unsubscribe/' . $subscribe->hash, array('absolute' => TRUE)) : '';
+      }
+    }
+
+  }
+
+  return $replacements;
+}
+
+function rh_subscribe_save($values) {
+
+  if (rh_subscribe_check($values['mail'], $values['nid'])) {
+    return FALSE;
+  }
+  $sid = db_insert('rh_subscribe')
+    ->fields(array(
+      'nid' => $values['nid'],
+      'name' => $values['name'],
+      'mail' => $values['mail'],
+      'hash' => uniqid(),
+      'created' => REQUEST_TIME,
+    ))
+    ->execute();
+
+  if ($sid) {
+    $subscribe = rh_subscribe_load($sid); //rh_subscribe_get($sid);
+    rules_invoke_event('rh_subscribe_user_subscribe', $subscribe);
+  }
+  return $sid;
+}
+
+function rh_subscribe_delete($hash) {
+  if (isset($hash)) {
+    $hash = trim($hash);
+  }
+  $result = db_select('rh_subscribe', 's')
+    ->fields('s', array())
+    ->condition('s.hash', $hash)
+    ->execute()
+    ->fetchAssoc();
+
+  if ($result) {
+    db_delete('rh_subscribe')
+      ->condition('hash', $hash)
+      ->execute();
+  }
+
+  return $result;
+}
+
+/**
+ *Implements of hook_views_api()
+ */
+function rh_subscribe_views_api() {
+  return array(
+    'api' => 3,
+    'path' => drupal_get_path('module', 'rh_subscribe') . '/views',
+  );
+}
+
+/**
+ * Implements hook_entity_info().
+ */
+
+function rh_subscribe_entity_info() {
+
+  return array(
+    'subscribe' => array(
+      'label' => t('Redhat subscribe'),
+      'base table' => 'rh_subscribe',
+      'fieldable' => TRUE,
+      'entity keys' => array(
+        'id' => 'sid',
+      ),
+    ),
+  );
+}
+
+function rh_subscribe_load($id, $reset = FALSE) {
+
+  $ids = (isset($id) ? array($id) : array());
+
+  return rh_subscribe_load_multiple($ids);
+}
+
+function rh_subscribe_load_multiple($ids = array(), $conditions = array(), $reset = FALSE) {
+
+  if (is_array($ids[0])) {
+    $ids_new = array();
+    foreach ($ids as $key => $data) {
+
+      $ids_new[] = $key;
+    }
+  }
+  else {
+    $ids_new = $ids;
+  }
+  $entity = entity_load('subscribe', $ids_new, $conditions, $reset);
+
+  return $entity ? reset($entity) : FALSE;
+}
+
+/**
+ * Implements of hook_block_info()
+ */
+
+function rh_subscribe_block_info() {
+  // This example comes from node.module.
+  $blocks['rh_subscribe_block_form'] = array(
+    'info' => t('[Redhat] subscribe form'),
+  );
+
+  return $blocks;
+}
+
+/**
+ * Implements of hook_block_view()
+ */
+function rh_subscribe_block_view($delta = '') {
+  // This example is adapted from node.module.
+  $block = array();
+
+  switch ($delta) {
+    case 'rh_subscribe_block_form':
+      if (user_access('subscribe project')) {
+        $block['subject'] = t('Subscribe');
+        $nid = 0;
+        $form_state = array(
+          'ajax' => TRUE,
+          'nid' => $nid,
+        );
+
+
+        $form = drupal_get_form('rh_subscribe_form');
+        $form['#attributes']['class'][] = 'subscrible-form';
+        $block['content'] = $form;
+
+      }
+      break;
+  }
+  return $block;
+}
+
+
+function rh_subscribe_form($form, &$form_state) {
+
+  global $user;
+
+
+  $nid = isset($form_state['nid']) ? $form_state['nid'] : 0;
+  $node = node_load($nid);
+
+  if (!isset($node->type) || $node->type != 'project') {
+    $projects = rh_subscribe_get_projects();
+    $form['nid'] = array(
+      '#title' => t('Select project'),
+      '#type' => 'select',
+      '#options' => $projects,
+    );
+  }
+  else {
+    $form['nid'] = array(
+      '#type' => 'value',
+      '#value' => $nid,
+    );
+
+  }
+
+
+  $form['name'] = array(
+    '#title' => t('Your name'),
+    '#type' => 'textfield',
+    '#default_value' => rh_subscribe_get_name(),
+    '#required' => TRUE,
+    '#attributes' => array('placeholder' => t('Your name')),
+  );
+
+  $form['mail'] = array(
+    '#title' => t('Your email'),
+    '#type' => 'textfield',
+    '#default_value' => isset($user->mail) ? $user->mail : '',
+    '#required' => TRUE,
+    '#attributes' => array('placeholder' => t('Your email')),
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Subscribe'),
+  );
+
+  return $form;
+
+}
+
+function rh_subscribe_form_validate($form, &$form_state) {
+
+  $values = $form_state['values'];
+  if (!valid_email_address($values['mail'])) {
+    form_set_error('mail', t('The e-mail address !text is not valid', array('!text' => $values['mail'])));
+  }
+  else {
+
+    if (rh_subscribe_check($values['mail'], $values['nid'])) {
+      // user has been subscribed the project before.
+      $node = node_load($values['nid']);
+      form_set_error('mail', t('You already subscribed to project: <a href="' . url('node/' . $node->nid) . '">!title</a>', array('!title' => $node->title)));
+    }
+
+  }
+
+}
+
+function rh_subscribe_form_submit($form, &$form_state) {
+
+  $values = $form_state['values'];
+  $node = node_load($values['nid']);
+  $sid = rh_subscribe_save($values);
+  if ($sid) {
+    drupal_set_message(t('You have been subscribed to project: <a href="' . url('node/' . $node->nid) . '">!title</a> successful.', array('!title' => $node->title)));
+  }
+}
+
+/*
+  Author : Brijesh Tiwari
+  Desc   : This function is to relocate Notify in menu setting vertical tab
+  Date   : 22-7-16
+*/
+
+function rh_subscribe_form_project_node_form_alter(&$form, &$form_state, $form_id){
+
+  $form['field_notify_subscriber_of_this_']['#type']='fieldset';
+  $form['field_notify_subscriber_of_this_']['#title']='Notify Subscriber';
+  $form['field_notify_subscriber_of_this_']['#collapsible']=1;
+  $form['field_notify_subscriber_of_this_']['#weight']='-1';
+  $form['field_notify_subscriber_of_this_']['#group']='additional_settings';
+}
