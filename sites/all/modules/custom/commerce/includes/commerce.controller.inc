@@ -79,12 +79,114 @@ class DrupalCommerceEntityController extends DrupalDefaultEntityController imple
 
 			$this->invoke('presave', $entity);
 
-			if (!empty($this->revisionKey) && empty($entity->is_new) && !empty($this->revision) && !$entity->{$this->revisionKey}) {
+			if (!empty($this->revisionKey) && empty($entity->is_new) && !empty($this->revision) && !empty($entity->{$this->revisionKey})) {
 				$entity->old_revision_id = $entity->{$this->revisionId};
 				unset($entity->{$this->revisionKey});
 			}
 
-			//@todo : to be continued
+			if (empty($entity->{$this->idKey}) && !empty($entity->is_new)) {
+				$op = 'insert';
+
+				$return = drupal_write_record($this->entityInfo['base table'], $entity);
+				if (!empty($this->revisionKey)) {
+					drupal_write_record($this->entityInfo['revision table'], $entity);
+					$update_base_table = TRUE;
+				}
+			} 
+			else {
+				$op = 'update';
+				$return = drupal_write_record($this->entityInfo['base table'], $entity);
+
+				if (!empty($this->revisionKey)) {
+					if (!empty($entity->revision)) {
+						drupal_write_record($this->entityInfo('revision table'), $entity);
+						$update_base_table = TRUE;
+					} 
+					else {
+						drupal_write_record($this->entityInfo['revision table'], $entity, $this->revisionKey);
+					}
+				} 
+			}
+
+			if ($update_base_table) {
+				db_update($this->entityInfo['base table'])
+				 ->fields([$this->revisionKey => $entity->{$this->revisionKey}])
+				 ->condition($this->idKey, $entity->{$this->idKey})
+				 ->execute();
+			}
+
+			$this->entityCache[$entity->{$this->idKey}] = 	$entity;
+
+			unset($this->lockedEntities[$entities->{$this->idKey}]);
+			$this->releaseLock();
+			$this->invoke($op, $entity);
+
+			db_ignore_slave();
+
+			unset($entity->original);
+			unset($entity->is_new);
+			unset($entity->revision);
+
+			return $return;		
+		} catch ( Exception $e) {
+			if (!empty($started_transaction)) {
+				$transaction->rollback();
+				watchdog_exception($this->entityType, $e);
+			}
+			throw $e;
+		}
+	}
+
+	public function create($values =[]) {
+		$value += ['is_new' => TRUE];
+
+		if (isset($this->entityInfo['entity class']) && $class = $this->entityInfo['entity class']) {
+			$entity = new $class($values, $this->entityType);
+		} else {
+			$entity = (object) $values;
+		}
+
+		drupal_alter('commerce_entity_create', $this-> entitytype, $entity);
+
+		return $entity;
+	}
+
+	public function delete($ids, DatabaseTransaction $transaction = NULL) {
+		$entities = $ids ? $this->load($ids) : FALSE;
+		if(!$entities) {
+			return ;
+		}
+
+		if (!isset($transaction)) {
+			$transaction = db_transaction();
+			$started_transaction = TRUE;
+		}
+
+		try {
+
+			db_delete($this->entityInfo['base table'])
+			 ->condition($this->idKey, array_keys($entities), 'IN')
+			 ->execute();
+			 if ($this->revisionKey) {
+			 	db_delete($this->entityinfo['revision table'])
+			 	 ->condition($this->idKey, array_keys($entities), 'IN')
+				->execute();
+			 }
+
+			 $this->resetCache($ids);
+			 foreach ($entities as $id => $entity) {
+			 	$this->invoke('delete', $entity);
+			 }
+
+			 db_ignore_slave();
+
+			 return TRUE;
+		} catch(Exception $e) {
+			if (!empty($started_transaction)) {
+				$transaction->rollback();
+				watchdog_exception($this->entityType, $e);
+			}
+			throw $e;
 		}
 	}
 }
