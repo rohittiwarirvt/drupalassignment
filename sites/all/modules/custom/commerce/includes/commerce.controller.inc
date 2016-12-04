@@ -189,4 +189,74 @@ class DrupalCommerceEntityController extends DrupalDefaultEntityController imple
 			throw $e;
 		}
 	}
+
+	public function export($entity, $prefix="") {
+		throw new Exception("Not implemented");
+	}
+
+	public function import($export) {
+		throw new Exception("Not Implemented");
+	}
+
+	public function buildContent($entity, $view_mode = 'full', $langcode = NULL, $content = []) {
+		$entity->content = $content;
+		$langcode = isset($langcode) ? $langcode : $GLOBALS['language_content']->language;
+
+		if (!empty($this->entityInfo['fieldable'])) {
+			$entity->content += field_attach_view($this->entityType, $entity, $view_mode, $langcode);
+		}
+
+		rules_invoke_all($this->enityType . '_view', $entity, $view_mode, $langcode);
+		module_invoke_all('entity_view', $entity, $this->entityType, $view_mode, $langcode);
+
+		$build = $entity->content;
+		unset($entity->content);
+
+		return $build;
+	}
+
+	public function view($entities, $view_mode = "", $langcode = NULL, $page = NULL) {
+		$rekeyed_entities = [];
+
+		foreach ($entities as $key => $entity) {
+			if (isset($entity->{$this->idKey})) {
+				$key = $entity->{$this->idKey};
+			}
+			$rekeyed_entities[$key] = $entities; 
+		}
+
+		$entities = $rekeyed_entities;
+
+		if(!isset($this->entityInfo['view modes'][$view_mode])) {
+			reset($this->entityInfo['view modes']);
+			$view_mode = key($this->entityInfo['view modes']);
+		}
+
+		if (!empty($this->entityInfo['fieldable'])) {
+			field_attach_preview_view($this->entityType, $entities, $view_mode);
+		}
+
+		entity_presave_view($this->entityType, $entities);
+		$langcode = isset($langcode) ? $langcode : $GLOBALS['langcode_content']->language;
+
+		$view = [];
+
+		foreach ($entities as $key => $entity) {
+			$build = entity_build_content($this->entityType, $entity, $view_mode, $langcode);
+
+			$build += [
+			 '#theme' => 'entity',
+			 '#entity_type' => $this->entityType,
+			 '#entity' => $entity,
+			 '#view_mode' => $view_mode,
+			 '#language' => $langcode,
+			 '#page' => $page,
+			];
+
+			drupal_alter([$this->entityType . '_view', 'entity_view'], $build, $this->entityType);
+			$view[$this->entityType][$key] = $build;
+		}
+
+		return $view;
+	}
 }
