@@ -1,0 +1,34 @@
+<?php
+
+function commerce_product_ui_new() {
+	return [
+		'type' => ""
+		'name' =>"",
+		'description' => "",
+		"help" =>"",
+		'revision' => 1
+	];
+}
+
+function commerce_product_ui_product_type_save($product_save, $configure = TRUE, $skip_reset = FALSE) {
+	$op = drupal_write_record('commerce_product_type', $product_type, empty($product_type['type']) ? 'type' : []);
+
+	if ( !empty($product_type['is_new']) && $op !== FALSE) {
+		field_attach_create_bundle('commerce_product', $product_type['type']);
+
+		if ($configure) {
+			commerce_product_configure_product_type($product_type['type']);
+		}
+
+		module_invoke_all('commerce_product_type_insert', $product_type, $skip_reset);
+	} elseif ($op !== FALSE) {
+			module_invoke_all('commerce_product_type_update', $product_type, $skip_reset);
+	}		
+
+	if (!$skip_reset) {
+		commerce_product_types_reset();
+		variable_set('menu_rebuild_needed', TRUE);
+	}
+
+	return $op
+}

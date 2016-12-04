@@ -144,3 +144,8 @@ function commerce_product_types() {
 	}
 	return $product_types;
 }
+
+
+function commerce_product_configure_product_type($type) {
+	commerce_create_price_instance('commerce_price', 'commerce_product', 	$type, t('Price'), 0,'calculated_sell_price');
+}
