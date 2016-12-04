@@ -98,3 +98,84 @@ function commerce_delete_instance($instance) {
     field_update_field($field);
   }
 }
+
+
+function commerce_entity_access($op, $entity, $account, $entity_type) {
+  global $user;
+  $account = isset($accout) ? $account : $user;
+  $entity_info = entity_get_info($entity_type);
+  if ($op == 'view') {
+    if (isset($entity)) {
+      if (!empty($entity_info['access arguments']['access tag']) &&  module_implements('query_' . $entity_info['access arguments']['access tag'] . '_alter')) {
+        $query = db_select($entity_info['base table']);
+        $query->addExpression('1');
+        return (bool) $query
+              ->addTag($entity_info['access arguments']['acess tag'])
+              -> addMetaData('account', $account)
+              ->addMetaData('entity', $entity)
+              ->condition($entity_info['entity keys']['id'], $entity->{$entity_info['entity keys']['id']})
+              ->range(0, 1)
+              ->execute()
+              ->fetchField();
+      } else {
+        return TRUE;
+      }
+    } else {
+      return user_access('view any ' . $entity_type . ' entity', $account);
+    }
+  } else {
+    $access_results = module_invoke_all('commerce_entity_access', $op, $entity, $account, $entity_type);
+
+        if (in_array(FALSE, $access_results, TRUE)) {
+      return FALSE;
+    }
+    elseif (in_array(TRUE, $access_results, TRUE)) {
+      return TRUE;
+    }
+
+    if (user_access('administer ' . $entity_type . ' entities', $account)) {
+      return TRUE;
+    }
+
+    if ($op == 'create') {
+        if (isset($entity) && !empty($entity_info['entity keys']['bundle'])) {
+        return user_access('create ' . $entity_type . ' entities', $account) || user_access('create ' . $entity_type . ' entities of bundle ' . $entity->{$entity_info['entity keys']['bundle']}, $account);
+      }
+      else {
+        // Otherwise perform an entity type-level access check.
+        return user_access('create ' . $entity_type . ' entities', $account);
+      }
+    } else {
+        $bundle_name = '';
+
+      if (isset($entity) && !empty($entity_info['entity keys']['bundle'])) {
+        $bundle_name = $entity->{$entity_info['entity keys']['bundle']};
+      }
+
+      if (user_access('edit any ' . $entity_type . ' entity', $account) ||
+        user_access('edit any ' . $entity_type . ' entity of bundle ' . $bundle_name, $account)) {
+        return TRUE;
+      }
+      // Then check an authenticated user's access to edit his own entities.
+      if ($account->uid && !empty($entity_info['access arguments']['user key']) && isset($entity->{$entity_info['access arguments']['user key']}) && $entity->{$entity_info['access arguments']['user key']} == $account->uid) {
+        if (user_access('edit own ' . $entity_type . ' entities', $account) ||
+          user_access('edit own ' . $entity_type . ' entities of bundle ' . $bundle_name, $account)) {
+          return TRUE;
+        }
+      }
+    }
+  }
+
+  return FALSE;
+}
+// #@todo to be completed
+function commerce_entity_access_permission($entity_type) {
+  $entity_info = entity_get_info($entity_type);
+  $labels = $entity_info['permission labels'];
+
+  $permission = [];
+
+  $permission['administer' .$entity_type . 'entities'] = [
+    'title' => t('Administer @entity_type', ['@entity_type' => $labels['plurals']]))
+  ]
+}

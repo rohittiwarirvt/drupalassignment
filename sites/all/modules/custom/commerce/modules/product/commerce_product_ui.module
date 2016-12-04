@@ -30,5 +30,30 @@ function commerce_product_ui_product_type_save($product_save, $configure = TRUE,
 		variable_set('menu_rebuild_needed', TRUE);
 	}
 
-	return $op
+	return $op;
 }
+
+function commerce_product_ui_product_add_any_access() {
+	if (user_access('administer commerce_product entities')) {
+		return TRUE;
+	}
+
+	foreach (commerce_product_types() as $type => $product_type) {
+		if (commerce_product_access('create', commerce_product_new($type))) {
+			return TRUE;
+		}
+	}
+}
+
+function commmerce_product_ui_menu() {
+	
+	$items['admin/commerce/products/add'] = array(
+    'title' => 'Add a product',
+    'description' => 'Add a new product for sale.',
+    'page callback' => 'commerce_product_ui_add_page',
+    'access callback' => 'commerce_product_ui_product_add_any_access',
+    'weight' => 10,
+    'file' => 'includes/commerce_product_ui.products.inc',
+   );
+}
+
