@@ -1,0 +1,11 @@
+name = Product UI
+description = Expose  a default UI for Products through product edit forms  and default views
+package = Commerce
+dependencies[] = field_ui
+dependencies[] = commerce
+dependencies[] = commerce_ui
+dependencies[] = commerce_product
+dependencies[] = views
+core = 7.x
+configure = admin/commerce/product/types
+
