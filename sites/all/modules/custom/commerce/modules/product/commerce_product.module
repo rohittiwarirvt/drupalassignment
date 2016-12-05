@@ -132,7 +132,7 @@ function commerce_product_types() {
 		$product_types = [];
 
 		foreach (module_implements('commerce_product_type_info') as $module) {
-			foreach ($module_invoke($module, 'commerce_product_type_info') as $type => $product_type) {
+			foreach (module_invoke($module, 'commerce_product_type_info') as $type => $product_type) {
 				$product_types += [
 				  'module' => $module,
 				  'revision' => 1,
@@ -148,4 +148,8 @@ function commerce_product_types() {
 
 function commerce_product_configure_product_type($type) {
 	commerce_create_price_instance('commerce_price', 'commerce_product', 	$type, t('Price'), 0,'calculated_sell_price');
+}
+
+function commerce_product_access($op, $product = NULL, $account = NULL) {
+	return commmerce_entity_access($op, $product, $account, 'commerce_product');
 }
