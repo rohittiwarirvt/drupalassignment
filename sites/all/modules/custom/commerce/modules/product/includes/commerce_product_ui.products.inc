@@ -33,3 +33,9 @@ function theme_product_add_list($variables) {
 	}
   return $output;
 }
+
+
+function commerce_product_ui_product_form_wrapper($product) {
+  module_load_include('inc', 'commerce_product', 'includes/commerce_product.forms');
+  return drupal_get_form('commerce_product_ui_product_form', $product);		
+}
