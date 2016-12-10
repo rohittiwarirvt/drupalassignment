@@ -176,6 +176,6 @@ function commerce_entity_access_permission($entity_type) {
   $permission = [];
 
   $permission['administer' .$entity_type . 'entities'] = [
-    'title' => t('Administer @entity_type', ['@entity_type' => $labels['plurals']]))
-  ]
+    'title' => t('Administer @entity_type', ['@entity_type' => $labels['plurals']])
+  ];
 }

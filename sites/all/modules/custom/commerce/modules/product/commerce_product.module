@@ -137,7 +137,7 @@ function commerce_product_types() {
 				  'module' => $module,
 				  'revision' => 1,
 				];
-				$product_types[$type] = $product_type; 
+				$product_types[$type] = $product_type;
 			}
 		}
 		drupal_alter('commerce_product_type_info', $product_types);
@@ -153,3 +153,61 @@ function commerce_product_configure_product_type($type) {
 function commerce_product_access($op, $product = NULL, $account = NULL) {
 	return commmerce_entity_access($op, $product, $account, 'commerce_product');
 }
+
+
+function commerce_product_type_load($type) {
+  $type = strtr($type, array('-' => '_'));
+  $product_types = commerce_product_types();
+  return !empty($product_types[$type]) ? $product_types[$type] : FALSE;
+}
+
+
+function commerce_product_save($product) {
+  return entity_get_controller('commerce_product')->save($product);
+}
+
+
+/**
+ * Determines whether or not the give product can be deleted.
+ *
+ * @param $product
+ *   The product to be checked for deletion.
+ *
+ * @return
+ *   Boolean indicating whether or not the product can be deleted.
+ */
+function commerce_product_can_delete($product) {
+  // Return FALSE if the given product does not have an ID; it need not be
+  // deleted, which is functionally equivalent to cannot be deleted as far as
+  // code depending on this function is concerned.
+  if (empty($product->product_id)) {
+    return FALSE;
+  }
+
+  // If any module implementing hook_commerce_product_can_delete() returns FALSE
+  // the product cannot be deleted. Return TRUE if none return FALSE.
+  return !in_array(FALSE, module_invoke_all('commerce_product_can_delete', $product));
+}
+
+
+function commerce_product_theme() {
+  return array(
+    'commerce_product_sku' => array(
+      'variables' => array('sku' => NULL, 'label' => NULL, 'product' => NULL),
+      'path' => drupal_get_path('module', 'commerce_product') . '/theme',
+      'template' => 'commerce-product-sku',
+    ),
+    'commerce_product_title' => array(
+      'variables' => array('title' => NULL, 'label' => NULL, 'product' => NULL),
+      'path' => drupal_get_path('module', 'commerce_product') . '/theme',
+      'template' => 'commerce-product-title',
+    ),
+    'commerce_product_status' => array(
+      'variables' => array('status' => NULL, 'label' => NULL, 'product' => NULL),
+      'path' => drupal_get_path('module', 'commerce_product') . '/theme',
+      'template' => 'commerce-product-status',
+    ),
+  );
+
+}
+

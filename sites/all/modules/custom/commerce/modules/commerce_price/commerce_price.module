@@ -50,8 +50,8 @@ function commerce_price_create_instance($field_name, 	$entity_type, $bundle, $la
 					'calculation' => $calculation
 				],
 				'weight' => $weight
-			]
+			];
 		}
-		field_create_instance($instance);	
+		field_create_instance($instance);
 	}
 }

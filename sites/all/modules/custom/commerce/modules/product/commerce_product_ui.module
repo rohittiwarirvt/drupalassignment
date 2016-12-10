@@ -1,8 +1,8 @@
 <?php
 
-function commerce_product_ui_new() {
+function commerce_product_ui_product_type_new() {
 	return [
-		'type' => ""
+		'type' => "",
 		'name' =>"",
 		'description' => "",
 		"help" =>"",
@@ -55,5 +55,20 @@ function commmerce_product_ui_menu() {
     'weight' => 10,
     'file' => 'includes/commerce_product_ui.products.inc',
    );
+
+	foreach(commerce_product_types() as $type => $product_type) {
+	  $items['admin/commerce/products/add/' . strtr($type, array('_' => '-'))] = [
+	  	'title' => 'Create !name',
+      	'title arguments' => array('!name' => $product_type['name']),
+      	'description' => $product_type['description'],
+      	'page callback' => 'commerce_product_ui_product_form_wrapper',
+      	'page arguments' => array(commerce_product_new($type)),
+      	'access callback' => 'commerce_product_access',
+      	'access arguments' => array('create', commerce_product_new($type)),
+      	'file' => 'includes/commerce_product_ui.products.inc',
+	  ];
+	}
+
+	return $items;
 }
 
