@@ -211,3 +211,23 @@ function commerce_product_theme() {
 
 }
 
+
+
+function commerce_product_types_reset() {
+  $product_types = &drupal_static('commerce_product_types');
+  $product_types = NULL;
+  entity_info_cache_clear();
+}
+
+
+function commerce_product_permission() {
+    $permissions = array(
+    'administer product types' => array(
+      'title' => t('Administer product types'),
+      'description' => t('Allows users to configure product types and their fields.'),
+      'restrict access' => TRUE,
+    ),
+  );
+    $permissions += commerce_entity_access_permissions('commerce_product');
+    return $permissions;
+}

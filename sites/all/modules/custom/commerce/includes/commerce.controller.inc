@@ -21,10 +21,10 @@ class DrupalCommerceEntityController extends DrupalDefaultEntityController imple
 				$this->lockedEntities += array_flip($ids);
 			}
 		}
-		return $query;	
+		return $query;
 	}
 
-	public resetCache( array $ids = NULL) {
+	public function resetCache( array $ids = NULL) {
 		parent::resetCache($ids);
 
 		if (!empty($this->lockedEntities)) {
@@ -33,7 +33,7 @@ class DrupalCommerceEntityController extends DrupalDefaultEntityController imple
 					unset($this->lockedEntities[$id]);
 				}
 			} else {
-				$this->lockedEntities = [];	
+				$this->lockedEntities = [];
 			}
 		}
 
@@ -52,7 +52,7 @@ class DrupalCommerceEntityController extends DrupalDefaultEntityController imple
 	public function invoke($hook, $entity) {
 		if (!empty($this->entityInfo['fieldable']) && function_exists($function = 'field_attach' . $hook)) {
 					$function($this->entityType, $entity);
-		}	
+		}
 
 		module_invoke_all($this->entityType . '_' . $hook, $entity);
 
@@ -92,7 +92,7 @@ class DrupalCommerceEntityController extends DrupalDefaultEntityController imple
 					drupal_write_record($this->entityInfo['revision table'], $entity);
 					$update_base_table = TRUE;
 				}
-			} 
+			}
 			else {
 				$op = 'update';
 				$return = drupal_write_record($this->entityInfo['base table'], $entity);
@@ -101,11 +101,11 @@ class DrupalCommerceEntityController extends DrupalDefaultEntityController imple
 					if (!empty($entity->revision)) {
 						drupal_write_record($this->entityInfo('revision table'), $entity);
 						$update_base_table = TRUE;
-					} 
+					}
 					else {
 						drupal_write_record($this->entityInfo['revision table'], $entity, $this->revisionKey);
 					}
-				} 
+				}
 			}
 
 			if ($update_base_table) {
@@ -127,7 +127,7 @@ class DrupalCommerceEntityController extends DrupalDefaultEntityController imple
 			unset($entity->is_new);
 			unset($entity->revision);
 
-			return $return;		
+			return $return;
 		} catch ( Exception $e) {
 			if (!empty($started_transaction)) {
 				$transaction->rollback();
@@ -137,7 +137,7 @@ class DrupalCommerceEntityController extends DrupalDefaultEntityController imple
 		}
 	}
 
-	public function create($values =[]) {
+	public function create(array $values =[]) {
 		$value += ['is_new' => TRUE];
 
 		if (isset($this->entityInfo['entity class']) && $class = $this->entityInfo['entity class']) {
@@ -222,7 +222,7 @@ class DrupalCommerceEntityController extends DrupalDefaultEntityController imple
 			if (isset($entity->{$this->idKey})) {
 				$key = $entity->{$this->idKey};
 			}
-			$rekeyed_entities[$key] = $entities; 
+			$rekeyed_entities[$key] = $entities;
 		}
 
 		$entities = $rekeyed_entities;

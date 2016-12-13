@@ -12,3 +12,9 @@ function commerce_install() {
         ->condition('name', 'commerce', '=')
         ->execute();
 }
+
+function commerce_unistall() {
+  variable_del('commerce_default_currency');
+  variable_del('commerce_enabled_currencies');
+  variable_del('commerce_password_length');
+}
