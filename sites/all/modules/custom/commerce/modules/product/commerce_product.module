@@ -147,11 +147,11 @@ function commerce_product_types() {
 
 
 function commerce_product_configure_product_type($type) {
-	commerce_create_price_instance('commerce_price', 'commerce_product', 	$type, t('Price'), 0,'calculated_sell_price');
+	commerce_price_create_instance('commerce_price', 'commerce_product', 	$type, t('Price'), 0,'calculated_sell_price');
 }
 
 function commerce_product_access($op, $product = NULL, $account = NULL) {
-	return commmerce_entity_access($op, $product, $account, 'commerce_product');
+	return commerce_entity_access($op, $product, $account, 'commerce_product');
 }
 
 
