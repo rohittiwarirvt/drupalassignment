@@ -138,7 +138,7 @@ class DrupalCommerceEntityController extends DrupalDefaultEntityController imple
 	}
 
 	public function create(array $values =[]) {
-		$value += ['is_new' => TRUE];
+		$values += ['is_new' => TRUE];
 
 		if (isset($this->entityInfo['entity class']) && $class = $this->entityInfo['entity class']) {
 			$entity = new $class($values, $this->entityType);
