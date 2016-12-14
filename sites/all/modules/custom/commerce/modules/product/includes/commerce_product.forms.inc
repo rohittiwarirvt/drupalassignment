@@ -1,6 +1,6 @@
 <?php
 
-function commerce_product_product_form($form, &$form_state, $product) {
+function commerce_product_ui_product_form($form, &$form_state, $product) {
   $form_state['build_info']['files']['form'] = drupal_get_path('module', 'commerce_product') . '/includes/commerce_product.forms.inc';
 
    $form['sku'] = array(
@@ -48,7 +48,7 @@ function commerce_product_product_form($form, &$form_state, $product) {
   );
 
    $product_type = commerce_product_type_load($product->type);
-  
+
    $form['change_history'] = array(
     '#type' => 'fieldset',
     '#title' => t('Change history'),
@@ -98,7 +98,7 @@ function commerce_product_product_form($form, &$form_state, $product) {
   );
 
   $form['#validate'][] = 'commerce_product_product_form_validate';
-  
+
   return $form;
 }
 
@@ -118,7 +118,7 @@ function commerce_product_product_form_validate($form, &$form_state) {
       ->propertyCondition('sku', $sku);
      $result = $query->execute();
 
-         if (!empty($result)) { 
+         if (!empty($result)) {
          	$product_id = key($result['commerce_product']);
          	if ($product_id != $product->product_id) {
 		        form_set_error('sku', t('This SKU is <a href="!url">already in use</a> and must be unique. Please supply another value.', array('!url' => url('admin/commerce/products/' . $product_id))));
@@ -129,10 +129,10 @@ function commerce_product_product_form_validate($form, &$form_state) {
       		form_set_error('sku', t('The SKU %sku contains invalid characters.', array('%sku' => $sku)));
    		  }
 	    // Trim leading and trailing whitespace from the SKU.
-	    form_set_value($form['sku'], trim($sku), $form_state);   		  
-  }	
+	    form_set_value($form['sku'], trim($sku), $form_state);
+  }
 
-  field_attach_form_validate('commerce_product', $product, $form, $form_state);		
+  field_attach_form_validate('commerce_product', $product, $form, $form_state);
 }
 
 
@@ -158,7 +158,7 @@ function commerce_product_product_form_submit($form, &$form_state) {
     !empty($form_state['values']['log'])) {
     $product->revision = TRUE;
     $product->log = $form_state['values']['log'];
-  }	
+  }
 
   // Notify field widgets.
   field_attach_submit('commerce_product', $product, $form, $form_state);

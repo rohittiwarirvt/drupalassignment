@@ -7,7 +7,7 @@ function commerce_product_entity_info() {
 	 	'label' => t('Commerce Product'),
 	 	'controller class' => 'CommerceProductEntityController',
 	 	'base table' => 'commerce_product',
-	 	'revision_table' => 'commerce_product_revision',
+	 	'revision table' => 'commerce_product_revision',
 	 	'fieldable' => TRUE,
 	 	'entity keys' => [
 	 		'id' => 'product_id',
@@ -117,11 +117,9 @@ function commerce_product_type_get_name($type = NULL) {
 	}
 
 	$product_type_names = [];
-
 	foreach ($product_types as $key => $value) {
-		$product_type_names[$key] = $value['name'];
+    $product_type_names[$key] = $value['name'];
 	}
-
 	return $product_type_names;
 }
 
@@ -133,7 +131,7 @@ function commerce_product_types() {
 
 		foreach (module_implements('commerce_product_type_info') as $module) {
 			foreach (module_invoke($module, 'commerce_product_type_info') as $type => $product_type) {
-				$product_types += [
+				$product_type += [
 				  'module' => $module,
 				  'revision' => 1,
 				];

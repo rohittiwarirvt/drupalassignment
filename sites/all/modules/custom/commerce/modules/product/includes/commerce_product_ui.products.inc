@@ -2,8 +2,9 @@
 
 function commerce_product_ui_add_page() {
 	$item = menu_get_item();
-	$content = system_admin_menu_block($item);
 
+	$content = system_admin_menu_block($item);
+	dsm($content);
 	if (count($content) == 1) {
 		$item = array_shift($content);
 		drupal_goto($item['href']);
@@ -29,7 +30,7 @@ function theme_product_add_list($variables) {
 	    }
 	    else {
 	      $output = '<p>' . t('No product types have been created yet for you to use.') . '</p>';
-	    }		
+	    }
 	}
   return $output;
 }
@@ -37,5 +38,5 @@ function theme_product_add_list($variables) {
 
 function commerce_product_ui_product_form_wrapper($product) {
   module_load_include('inc', 'commerce_product', 'includes/commerce_product.forms');
-  return drupal_get_form('commerce_product_ui_product_form', $product);		
+  return drupal_get_form('commerce_product_ui_product_form', $product);
 }
