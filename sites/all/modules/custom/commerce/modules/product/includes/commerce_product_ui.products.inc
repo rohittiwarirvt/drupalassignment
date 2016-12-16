@@ -4,7 +4,6 @@ function commerce_product_ui_add_page() {
 	$item = menu_get_item();
 
 	$content = system_admin_menu_block($item);
-	dsm($content);
 	if (count($content) == 1) {
 		$item = array_shift($content);
 		drupal_goto($item['href']);

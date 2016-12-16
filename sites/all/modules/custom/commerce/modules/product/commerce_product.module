@@ -229,3 +229,34 @@ function commerce_product_permission() {
     $permissions += commerce_entity_access_permissions('commerce_product');
     return $permissions;
 }
+
+/**
+ * Deletes a product type.
+ *
+ * @param $type
+ *   The machine-readable name of the product type.
+ * @param $skip_reset
+ *   Boolean indicating whether or not this delete should result in product
+ *     types being reset and the menu being rebuilt; defaults to FALSE. This is
+ *     useful when you intend to perform many saves at once, as menu rebuilding
+ *     is very costly in terms of performance.
+ */
+function commerce_product_ui_product_type_delete($type, $skip_reset = FALSE) {
+
+    $product_type = commerce_product_type_load($type);
+
+      db_delete('commerce_product_type')
+    ->condition('type', $type)
+    ->execute();
+
+      // Rebuild the menu to get rid of this product type's menu items.
+  if (!$skip_reset) {
+    commerce_product_types_reset();
+    variable_set('menu_rebuild_needed', TRUE);
+  }
+  // Notify the field API that this bundle has been destroyed.
+  field_attach_delete_bundle('commerce_product', $type);
+
+    // Notify other modules that this product type has been deleted.
+  module_invoke_all('commerce_product_type_delete', $product_type, $skip_reset);
+}
