@@ -1,0 +1,137 @@
+<?php
+module_load_include('inc', 'rh', 'includes/theme');
+module_load_include('inc', 'rh', 'includes/block');
+
+/**
+ * Implements of Hook_menu()
+ */
+
+function rh_menu() {
+
+  $items = array();
+
+  $items['executive-deck/%/pdf'] = array(
+    'title' => ('Executive deck PDF generate'),
+    'access arguments' => array('access content'),
+    'page callback' => 'rh_executive_deck_pdf_page',
+    'page arguments' => array(1),
+    'type' => MENU_CALLBACK,
+  );
+
+  return $items;
+}
+
+/**
+ * Implements of hook_field_widget_form_alter()
+ */
+function rh_field_widget_form_alter(&$element, &$form_state, $context) {
+
+  if (isset($element['#bundle']) && isset($element['#field_name'])) {
+    if ($element['#field_name'] == 'og_user_node' || $element['#field_name'] == 'og_group_ref') {
+      $bundle = $element['#bundle'];
+
+      if (in_array($bundle, array(
+        'document',
+        'blog',
+        'user',
+        'event',
+        'story'
+      ))) {
+        if (isset($element['default']['#title'])) {
+
+          $element['default']['#title'] = t('Your projects');
+          $element['default']['#description'] = t('Associate this content with projects you belong to.');
+        }
+        if (isset($element['admin']['#title'])) {
+
+          $element['admin']['#title'] = t('Other projects');
+          $element['admin']['#description'] = t('As project administrator, associate this content with projects you do <em>not</em> belong to.');
+        }
+      }
+    }
+
+  }
+
+}
+
+function redhat_get_project_story($project_node_id) {
+
+  $query = "SELECT n.nid FROM {og_membership} m INNER JOIN {node} n ON n.nid = m.etid WHERE m.gid =:gid AND n.type = :type AND n.status = 1 LIMIT 1 OFFSET 0";
+
+  $result = db_query($query, array(
+    ':type' => 'story',
+    ':gid' => $project_node_id
+  ))
+    ->fetchField();
+
+
+  return $result;
+}
+
+/**
+ * Implements of hook_admin_paths()
+ */
+
+function rh_admin_paths() {
+
+  $paths = array(
+    'node/*/track' => TRUE,
+  );
+  return $paths;
+}
+
+/**
+ * Implements of hook_form_alter
+ */
+
+function rh_form_alter(&$form, &$form_state, $form_id) {
+
+  if (isset($form['submitted']['event']) && !empty($_GET['event'])) {
+    $form['submitted']['event']['#default_value'] = $_GET['event'];
+    $form['submitted']['event']['#attributes']['disabled'] = TRUE;
+  }
+}
+
+function rh_menu_alter(&$items) {
+  $items['node/%node/pdf']['type'] = MENU_CALLBACK;
+}
+
+/**
+ * Page callback for PDF generate
+ */
+
+function rh_executive_deck_pdf_page($nid) {
+
+
+  if (!empty($nid) && is_numeric($nid) && $node = node_load($nid)) {
+    $file = DRUPAL_ROOT . '/' . drupal_get_path('module', 'rh') . "/lib/dompdf/dompdf_config.inc.php";
+    require_once $file;
+    $html = theme('redhat_executive_deck_pdf', array('node' => $node));
+    $dompdf = new DOMPDF;
+    $dompdf->load_html($html);
+    $dompdf->render();
+    $dompdf->stream(rh_sanitize_fileName($node->title) . '.pdf');
+    exit;
+  }
+  else {
+
+    return drupal_access_denied();
+  }
+
+
+}
+
+function rh_sanitize_fileName($dangerousFilename, $platform = 'Unix') {
+  if (in_array(strtolower($platform), array('unix', 'linux'))) {
+    // our list of "dangerous characters", add/remove
+    // characters if necessary
+    $dangerousCharacters = array(" ", '"', "'", "&", "/", "\\", "?", "#");
+  }
+  else {
+    // no OS matched? return the original filename then...
+    return $dangerousFilename;
+  }
+
+  // every forbidden character is replace by an underscore
+  return str_replace($dangerousCharacters, '_', $dangerousFilename);
+}

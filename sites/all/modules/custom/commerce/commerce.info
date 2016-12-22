@@ -8,3 +8,4 @@ dependecies[] = entity
 dependencies[] =  system
 dependencies[] = rules
 
+files[] = includes/commerce.controller.inc

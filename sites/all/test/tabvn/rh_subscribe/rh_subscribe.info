@@ -1,0 +1,8 @@
+name = Redhat Project Subscribe
+description = Allow user enter name, email to subscribe project(blog,document,stories).
+core = 7.x
+package = Redhat
+dependencies[] = ctools
+
+files[] = views/rh_subscribe_handler_argument_subscribe_nid.inc
+files[] = views/rh_subscribe_handle_filter_node_project.inc

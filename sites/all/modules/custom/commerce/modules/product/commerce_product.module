@@ -1,0 +1,262 @@
+<?php
+
+
+function commerce_product_entity_info() {
+	$return = [
+	 'commerce_product' => [
+	 	'label' => t('Commerce Product'),
+	 	'controller class' => 'CommerceProductEntityController',
+	 	'base table' => 'commerce_product',
+	 	'revision table' => 'commerce_product_revision',
+	 	'fieldable' => TRUE,
+	 	'entity keys' => [
+	 		'id' => 'product_id',
+	 		'bundle' => 'type',
+	 		'label' => 'title',
+	 		'revision' => 'revision_id',
+	 		'language' => 'language'
+	 	],
+	 	'bundle keys' => [
+	 		'bundle' => 'type'
+	 	],
+	 	'bundles' => [
+
+	 	],
+	 	'load hook' => 'commerce_product_load',
+	 	'view modes' => [
+	 		'full' => [
+	 			'label' => t('Admin display'),
+	 			'custom settings' => FALSE
+	 		],
+
+	 	],
+	 	'uri callback' => 'commerce_product_uri',
+	 	'metadata contoller class' => '',
+	 	'token-type' => 'commerce-product',
+	 	'access callback' => 'commmerce_entity_access',
+	 	'access arguments' => [
+	 		'user key' => 'uid',
+	 		'access tag' => 'commmerce_product_acess'
+	 	] ,
+	 	'permission labels' => [
+	 		'singular' => t('product'),
+	 		'plural' => t('products'),
+	 	],
+	 	'redirect' => FALSE,
+	 	      // Add translation support.
+	      'translation' => array(
+	        'locale' => TRUE,
+	        'entity_translation' => array(
+	          'class' => 'EntityTranslationCommerceProductHandler',
+	          'bundle callback' => 'commerce_product_entity_translation_supported_type',
+	          'default settings' => array(
+	            'default_language' => LANGUAGE_NONE,
+	            'hide_language_selector' => FALSE,
+	          ),
+	        ),
+	      ),
+
+	            // Add title replacement support for translations.
+	      'field replacement' => array(
+	        'title' => array(
+	          'field' => array(
+	            'type' => 'text',
+	            'cardinality' => 1,
+	            'translatable' => TRUE,
+	          ),
+	          'instance' => array(
+	            'label' => t('Title'),
+	            'required' => TRUE,
+	            'settings' => array(
+	              'text_processing' => 0,
+	            ),
+	            'widget' => array(
+	              'weight' => -5,
+	            ),
+	          ),
+	        ),
+	      ),
+	 ],
+	];
+
+	$return['commerce_product']['bundles'] = [];
+
+	foreach (commerce_product_type_get_name() as $type => $name) {
+		$return['commerce_product']['bundles'][$type] = [
+			'label' => $name
+		];
+	}
+
+	return $return;
+}
+
+
+
+function commmerce_product_uri($product) {
+
+	foreach (module_implements('commerce_product_uri') as $module) {
+		$uri = module_invoke($module, 'commerce_product_uri', $product);
+
+		if (!empty($uri)) {
+			return $uri;
+		}
+	}
+
+	return NULL;
+}
+
+function commerce_product_type_get_name($type = NULL) {
+	$product_types = commerce_product_types();
+
+	if (!empty($type)) {
+		if(isset($product_types[$type])) {
+			return $product_types[$type]['name'];
+		} else {
+			return FALSE;
+		}
+	}
+
+	$product_type_names = [];
+	foreach ($product_types as $key => $value) {
+    $product_type_names[$key] = $value['name'];
+	}
+	return $product_type_names;
+}
+
+
+function commerce_product_types() {
+	$product_types = &drupal_static(__FUNCTION__);
+	if (!isset($product_types)) {
+		$product_types = [];
+
+		foreach (module_implements('commerce_product_type_info') as $module) {
+			foreach (module_invoke($module, 'commerce_product_type_info') as $type => $product_type) {
+				$product_type += [
+				  'module' => $module,
+				  'revision' => 1,
+				];
+				$product_types[$type] = $product_type;
+			}
+		}
+		drupal_alter('commerce_product_type_info', $product_types);
+	}
+	return $product_types;
+}
+
+
+function commerce_product_configure_product_type($type) {
+	commerce_price_create_instance('commerce_price', 'commerce_product', 	$type, t('Price'), 0,'calculated_sell_price');
+}
+
+function commerce_product_access($op, $product = NULL, $account = NULL) {
+	return commerce_entity_access($op, $product, $account, 'commerce_product');
+}
+
+
+function commerce_product_type_load($type) {
+  $type = strtr($type, array('-' => '_'));
+  $product_types = commerce_product_types();
+  return !empty($product_types[$type]) ? $product_types[$type] : FALSE;
+}
+
+
+function commerce_product_save($product) {
+  return entity_get_controller('commerce_product')->save($product);
+}
+
+
+/**
+ * Determines whether or not the give product can be deleted.
+ *
+ * @param $product
+ *   The product to be checked for deletion.
+ *
+ * @return
+ *   Boolean indicating whether or not the product can be deleted.
+ */
+function commerce_product_can_delete($product) {
+  // Return FALSE if the given product does not have an ID; it need not be
+  // deleted, which is functionally equivalent to cannot be deleted as far as
+  // code depending on this function is concerned.
+  if (empty($product->product_id)) {
+    return FALSE;
+  }
+
+  // If any module implementing hook_commerce_product_can_delete() returns FALSE
+  // the product cannot be deleted. Return TRUE if none return FALSE.
+  return !in_array(FALSE, module_invoke_all('commerce_product_can_delete', $product));
+}
+
+
+function commerce_product_theme() {
+  return array(
+    'commerce_product_sku' => array(
+      'variables' => array('sku' => NULL, 'label' => NULL, 'product' => NULL),
+      'path' => drupal_get_path('module', 'commerce_product') . '/theme',
+      'template' => 'commerce-product-sku',
+    ),
+    'commerce_product_title' => array(
+      'variables' => array('title' => NULL, 'label' => NULL, 'product' => NULL),
+      'path' => drupal_get_path('module', 'commerce_product') . '/theme',
+      'template' => 'commerce-product-title',
+    ),
+    'commerce_product_status' => array(
+      'variables' => array('status' => NULL, 'label' => NULL, 'product' => NULL),
+      'path' => drupal_get_path('module', 'commerce_product') . '/theme',
+      'template' => 'commerce-product-status',
+    ),
+  );
+
+}
+
+
+
+function commerce_product_types_reset() {
+  $product_types = &drupal_static('commerce_product_types');
+  $product_types = NULL;
+  entity_info_cache_clear();
+}
+
+
+function commerce_product_permission() {
+    $permissions = array(
+    'administer product types' => array(
+      'title' => t('Administer product types'),
+      'description' => t('Allows users to configure product types and their fields.'),
+      'restrict access' => TRUE,
+    ),
+  );
+    $permissions += commerce_entity_access_permissions('commerce_product');
+    return $permissions;
+}
+
+/**
+ * Deletes a product type.
+ *
+ * @param $type
+ *   The machine-readable name of the product type.
+ * @param $skip_reset
+ *   Boolean indicating whether or not this delete should result in product
+ *     types being reset and the menu being rebuilt; defaults to FALSE. This is
+ *     useful when you intend to perform many saves at once, as menu rebuilding
+ *     is very costly in terms of performance.
+ */
+function commerce_product_ui_product_type_delete($type, $skip_reset = FALSE) {
+
+    $product_type = commerce_product_type_load($type);
+
+      db_delete('commerce_product_type')
+    ->condition('type', $type)
+    ->execute();
+
+      // Rebuild the menu to get rid of this product type's menu items.
+  if (!$skip_reset) {
+    commerce_product_types_reset();
+    variable_set('menu_rebuild_needed', TRUE);
+  }
+  // Notify the field API that this bundle has been destroyed.
+  field_attach_delete_bundle('commerce_product', $type);
+
+    // Notify other modules that this product type has been deleted.
+  module_invoke_all('commerce_product_type_delete', $product_type, $skip_reset);
+}

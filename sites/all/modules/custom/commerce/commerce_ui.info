@@ -2,4 +2,4 @@ name = "Commerce UI"
 dependencies[] = commerce
 
 core="7.x"
-package="commerce"
+package = Commerce
