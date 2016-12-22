@@ -55,3 +55,530 @@ function commerce_price_create_instance($field_name, 	$entity_type, $bundle, $la
 		field_create_instance($instance);
 	}
 }
+
+
+/**
+ * Implements hook_field_info().
+ */
+function commerce_price_field_info() {
+  return array(
+    'commerce_price' => array(
+      'label' => t('Price'),
+      'description' => t('This field stores prices for products consisting of an amount and a currency.'),
+      'settings' => array(),
+      'instance_settings' => array(),
+      'default_widget' => 'commerce_price_simple',
+      'default_formatter' => 'commerce_price_formatted_amount',
+      'property_type' => 'commerce_price',
+      'property_callbacks' => array('commerce_price_property_info_callback'),
+      'default_token_formatter' => 'commerce_price_formatted_amount'
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_validate().
+ */
+function commerce_price_field_validate($entity_type, $entity, $field, $instance, $langcode, &$items, &$errors) {
+  $translated_instance = commerce_i18n_object('field_instance', $instance);
+    // Ensure only numeric values are entered in price fields.
+  foreach ($items as $delta => &$item) {
+    if (!empty($item['amount']) && !is_numeric($item['amount'])) {
+    	$errors[$field['field_name']][$langcode][$delta][] = array(
+        'error' => 'price_numeric',
+        'message' => t('%name: you must enter a numeric value for the price.', array('%name' => $translated_instance['label'])),
+        );
+    }
+  }
+}
+
+
+/**
+ * Implements of hook_field_is_empty().
+ */
+function commerce_price_field_is_empty($item, $field) {
+  return !isset($item['amount']) || (string) $item['amount'] == '';
+}
+
+/**
+ * Implements hook_field_formatter_info().
+ */
+function commerce_price_field_formatter_info() {
+  return array(
+    'commerce_price_raw_amount' => array(
+      'label' => t('Raw amount'),
+      'field types' => array('commerce_price'),
+      'settings' => array(
+        'calculation' => FALSE,
+      ),
+    ),
+    'commerce_price_formatted_amount' => array(
+      'label' => t('Formatted amount'),
+      'field types' => array('commerce_price'),
+      'settings' => array(
+        'calculation' => FALSE,
+      ),
+    ),
+    'commerce_price_formatted_components' => array(
+      'label' => t('Formatted amount with components'),
+      'field types' => array('commerce_price'),
+      'settings' => array(
+        'calculation' => FALSE,
+      ),
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_formatter_settings_form().
+ */
+function commerce_price_field_formatter_settings_form($field, $instance, $view_mode, $form, &$form_state) {
+  $display = $instance['display'][$view_mode];
+  $settings = $display['settings'];
+  $element = array();
+
+    // Do not display any settings for the component formatter.
+  if ($display['type'] == 'commerce_price_formatted_components') {
+    return;
+  }
+
+  // Get all the price calculation options.
+  $options = module_invoke_all('commerce_price_field_calculation_options', $field, $instance, $view_mode);
+
+  if (empty($options)) {
+    $element['calculation'] = array(
+      '#type' => 'value',
+      '#value' => FALSE,
+    );
+
+  	$element['help'] = array(
+      '#markup' => '<p>' . t('No configuration is necessary. The original price will be displayed as loaded.') . '</p>',
+  	);
+	}  else {
+    // Add the option to display the original price; unshifting will give it a
+    // key of 0 which will equate to FALSE with an Equal operator.
+    array_unshift($options, t('Display the original price as loaded.'));
+
+    $element['calculation'] = array(
+      '#type' => 'radios',
+      '#options' => $options,
+      '#default_value' => empty($settings['calculation']) ? '0' : $settings['calculation'],
+    );
+ 	}
+  return $element;
+}
+
+
+/**
+ * Implements hook_field_formatter_settings_summary().
+ */
+function commerce_price_field_formatter_settings_summary($field, $instance, $view_mode) {
+  $display = $instance['display'][$view_mode];
+  $settings = $display['settings'];
+  // Do not display a summary for the component formatter.
+  if ($display['type'] == 'commerce_price_formatted_components') {
+    return;
+  }
+
+  $summary = array();
+
+  if ($settings['calculation'] == FALSE) {
+    $summary[] = t('Displaying the original price');
+  }
+  else {
+    $summary[] = t('Displaying a calculated price');
+  }
+
+  return implode('<br />', $summary);
+}
+
+/**
+ * Implements hook_field_formatter_prepare_view().
+ */
+function commerce_price_field_formatter_prepare_view($entity_type, $entities, $field, $instances, $langcode, &$items, $displays) {
+  // TODO: Loop over the instances and pass them to this hook individually so we
+  // can enforce prices displaying with components as not being altered.
+
+  // Allow other modules to prepare the item values prior to formatting.
+  foreach(module_implements('commerce_price_field_formatter_prepare_view') as $module) {
+    $function = $module . '_commerce_price_field_formatter_prepare_view';
+    $function($entity_type, $entities, $field, $instances, $langcode, $items, $displays);
+  }
+}
+
+/**
+ * Implements hook_field_formatter_view().
+ */
+function commerce_price_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+  $translated_instance = commerce_i18n_object('field_instance', $instance);
+
+  $element = array();
+  // Loop through each price value in this field.
+  foreach ($items as $delta => $item) {
+    if (is_null($item['amount'])) {
+      // TODO: Consider if we should render as N/A or something indicating a
+      // price was not available as opposed to just leaving a blank.
+      continue;
+    }
+
+    // Theme the display of the price based on the display type.
+    switch ($display['type']) {
+      case 'commerce_price_raw_amount':
+        $element[$delta] = array(
+          '#markup' => check_plain($item['amount']),
+        );
+        break;
+      case 'commerce_price_formatted_amount':
+        $element[$delta] = array(
+          '#markup' => commerce_currency_format($item['amount'], $item['currency_code'], $entity),
+        );
+        break;
+      case 'commerce_price_formatted_components':
+        // Build an array of component display titles and their prices.
+        // Build an array of component display titles and their prices.
+        $components = array();
+        $weight = 0;
+        foreach ($item['data']['components'] as $key => $component) {
+          $component_type = commerce_price_component_type_load($component['name']);
+          if (empty($components[$component['name']])) {
+            $components[$component['name']] = array(
+              'title' => check_plain($component_type['display_title']),
+              'price' => commerce_price_component_total($item, $component['name']),
+              'weight' => $component_type['weight'],
+            );
+
+            $weight = max($weight, $component_type['weight']);
+          }
+        }
+
+        // If there is only a single component and its price equals the field's,
+        // then remove it and just show the actual price amount.
+        if (count($components) == 1 && in_array('base_price', array_keys($components))) {
+          $components = array();
+        }
+
+        // Add the actual field value to the array.
+        $components['commerce_price_formatted_amount'] = array(
+          'title' => check_plain($translated_instance['label']),
+          'price' => $item,
+          'weight' => $weight + 1,
+        );
+
+        // Allow other modules to alter the components.
+        drupal_alter('commerce_price_formatted_components', $components, $item, $entity);
+
+        // Sort the components by weight.
+        uasort($components, 'drupal_sort_weight');
+        // Format the prices for display.
+        foreach ($components as $key => &$component) {
+          $component['formatted_price'] = commerce_currency_format(
+            $component['price']['amount'],
+            $component['price']['currency_code'],
+            $entity
+          );
+        }
+
+        $element[$delta] = array(
+          '#markup' => theme('commerce_price_formatted_components', array('components' => $components, 'price' => $item)),
+        );
+        break;
+  	}
+  }
+  return $element;
+}
+
+/**
+ * Implements hook_theme().
+ */
+function commerce_price_theme() {
+  return array(
+    'commerce_price_formatted_components' => array(
+      'variables' => array('components' => array(), 'price' => array()),
+    ),
+  );
+}
+
+
+function theme_commerce_price_formatted_components($variables) {
+  // Add the CSS styling to the table.
+  drupal_add_css(drupal_get_path('module', 'commerce_price') . '/theme/commerce_price.theme.css');
+  // Build table rows out of the components.
+  $rows = array();
+  foreach ($variables['components'] as $name => $component) {
+    $rows[] = array(
+      'data' => array(
+        array(
+          'data' => $component['title'],
+          'class' => array('component-title'),
+        	),
+        array(
+          'data' => $component['formatted_price'],
+          'class' => array('component-total'),
+        	),
+      	),
+      'class' => array(drupal_html_class('component-type-' . $name)),
+    );
+  }
+  return theme('table', array('rows' => $rows, 'attributes' => array('class' => array('commerce-price-formatted-components'))));
+}
+
+
+/**
+ * Implements hook_field_widget_info().
+ */
+function commerce_price_field_widget_info() {
+  return array(
+    'commerce_price_simple' => array(
+      'label' => t('Price textfield'),
+      'field types' => array('commerce_price'),
+      'settings' => array(
+        'currency_code' => 'default',
+      ),
+    ),
+    'commerce_price_full' => array(
+      'label' => t('Price with currency'),
+      'field types' => array('commerce_price'),
+      'settings' => array(
+        'currency_code' => 'default',
+      ),
+    ),
+  );
+}
+
+
+/**
+ * Implements hook_field_widget_settings_form().
+ */
+function commerce_price_field_widget_settings_form($field, $instance) {
+  $form = array();
+  // Build an options array of allowed currency values including the option for
+  // the widget to always use the store's default currency.
+  $options = array(
+    'default' => t('- Default store currency -'),
+  );
+
+  foreach (commerce_currencies(TRUE) as $currency_code => $currency) {
+    $options[$currency_code] = t('@code - @name', array('@code' => $currency['code'], '@name' => $currency['name']));
+  }
+
+  $form['currency_code'] = array(
+    '#type' => 'select',
+    '#title' => ($instance['widget']['type'] == 'commerce_price_simple') ? t('Currency') : t('Default currency'),
+    '#options' => $options,
+    '#default_value' => $instance['widget']['settings']['currency_code'],
+  );
+
+  return $form;
+}
+/*
+ * Implements hook_field_widget_form().
+ */
+function commerce_price_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
+  // Use the default currency if the setting is not present.
+  if (empty($instance['widget']['settings']['currency_code']) || $instance['widget']['settings']['currency_code'] == 'default') {
+    $default_currency_code = NULL;
+  }
+  else {
+    $default_currency_code = $instance['widget']['settings']['currency_code'];
+  }
+
+  // If a price has already been set for this instance prepare default values.
+  if (isset($items[$delta]['amount'])) {
+    $currency = commerce_currency_load($items[$delta]['currency_code']);
+        // Convert the price amount to a user friendly decimal value.
+    $default_amount = commerce_currency_amount_to_decimal($items[$delta]['amount'], $currency['code']);
+        // Run it through number_format() to ensure it has the proper number of
+    // decimal places.
+    $default_amount = number_format($default_amount, $currency['decimals'], '.', '');
+    $default_currency_code = $items[$delta]['currency_code'];
+  }
+  else {
+    $default_amount = NULL;
+  }
+
+  // Load the default currency for this instance.
+  $default_currency = commerce_currency_load($default_currency_code);
+  $element['#attached']['css'][] = drupal_get_path('module', 'commerce_price') . '/theme/commerce_price.theme.css';
+    // Build the form based on the type of price widget.
+  switch ($instance['widget']['type']) {
+    // The simple widget is just a textfield with a non-changeable currency.
+      case 'commerce_price_simple':
+      $element['amount'] = array(
+        '#type' => 'textfield',
+        '#title' => $element['#title'],
+        '#default_value' => $default_amount,
+        '#required' => $instance['required'] && ($delta == 0 || $field['cardinality'] > 0),
+        '#size' => 10,
+        '#field_suffix' => $default_currency['code'],
+      );
+      // Add the help text if specified.
+      if (!empty($element['#description'])) {
+        $element['amount']['#field_suffix'] .= '<div class="description">' . $element['#description'] . '</div>';
+      }
+      $element['currency_code'] = array(
+        '#type' => 'value',
+        '#default_value' => $default_currency['code'],
+      );
+      break;
+    // The full widget is a textfield with a currency select list.
+    case 'commerce_price_full':
+      $element['amount'] = array(
+        '#type' => 'textfield',
+        '#title' => $element['#title'],
+        '#default_value' => $default_amount,
+        '#required' => $instance['required'] && ($delta == 0 || $field['cardinality'] > 0),
+        '#size' => 10,
+      );
+          // Build a currency options list from all enabled currencies.
+      $options = array();
+
+      foreach (commerce_currencies(TRUE) as $currency_code => $currency) {
+        $options[$currency_code] = check_plain($currency['code']);
+      }
+
+      // If the current currency value is not available, add it now with a
+      // message in the help text explaining it.
+      if (empty($options[$default_currency['code']])) {
+        $options[$default_currency['code']] = check_plain($default_currency['code']);
+
+        $description = t('The currency set for this price is not currently enabled. If you change it now, you will not be able to set it back.');
+      }
+      else {
+        $description = '';
+      }
+
+
+      // If only one currency option is available, don't use a select list.
+      if (count($options) == 1) {
+        $currency_code = key($options);
+        $element['amount']['#field_suffix'] = $currency_code;
+        // Add the help text if specified.
+        if (!empty($element['#description'])) {
+          $element['amount']['#field_suffix'] .= '<div class="description">' . $element['#description'] . '</div>';
+        }
+
+        $element['currency_code'] = array(
+          '#type' => 'value',
+          '#default_value' => $currency_code,
+        );
+
+      } else {
+      	$element['amount']['#prefix'] = '<div class="commerce-price-full">';
+      	$element['currency_code'] = array(
+          '#type' => 'select',
+          '#description' => $description,
+          '#options' => $options,
+          '#default_value' => isset($items[$delta]['currency_code']) ? $items[$delta]['currency_code'] : $default_currency['code'],
+          '#suffix' => '</div>',
+        );
+        // Add the help text if specified.
+        if (!empty($element['#description'])) {
+          $element['currency_code']['#suffix'] .= '<div class="description">' . $element['#description'] . '</div>';
+        }
+      }
+      break;
+    }
+
+  $element['data'] = array(
+    '#type' => 'value',
+    '#default_value' => !empty($items[$delta]['data']) ? $items[$delta]['data'] : array('components' => array()),
+  );
+
+  $element['#element_validate'][] = 'commerce_price_field_widget_validate';
+
+  return $element;
+}
+
+/**
+ * Validate callback: ensures the amount value is numeric and converts it from a
+ * decimal value to an integer price amount.
+ */
+function commerce_price_field_widget_validate($element, &$form_state) {
+  if ($element['amount']['#value'] !== '') {
+    // Ensure the price is numeric.
+    if (!is_numeric($element['amount']['#value'])) {
+      form_error($element['amount'], t('%title: you must enter a numeric value for the price amount.', array('%title' => $element['amount']['#title'])));
+    }
+    else {
+      // Convert the decimal amount value entered to an integer based amount value.
+      form_set_value($element['amount'], commerce_currency_decimal_to_amount($element['amount']['#value'], $element['currency_code']['#value']), $form_state);
+    }
+  }
+}
+
+
+/**
+ * Implements hook_field_widget_error().
+ */
+function commerce_price_field_widget_error($element, $error, $form, &$form_state) {
+  form_error($element['amount'], $error['message']);
+}
+
+
+/**
+ * Callback to alter the property info of price fields.
+ *
+ * @see commerce_price_field_info().
+ */
+function commerce_price_property_info_callback(&$info, $entity_type, $field, $instance, $field_type) {
+  $name = $field['field_name'];
+  $property = &$info[$entity_type]['bundles'][$instance['bundle']]['properties'][$name];
+  $property['type'] = ($field['cardinality'] != 1) ? 'list<commerce_price>' : 'commerce_price';
+  $property['getter callback'] = 'entity_metadata_field_verbatim_get';
+  $property['setter callback'] = 'entity_metadata_field_verbatim_set';
+  $property['auto creation'] = 'commerce_price_field_data_auto_creation';
+  $property['property info'] = commerce_price_field_data_property_info();
+  unset($property['query callback']);
+}
+
+/**
+ * Returns the default array structure for a Price field for use when creating
+ *   new data arrays through an entity metadata wrapper.
+ */
+function commerce_price_field_data_auto_creation() {
+  return array('amount' => 0, 'currency_code' => commerce_default_currency(), 'data' => array('components' => array()));
+}
+
+/**
+ * Defines info for the properties of the Price field data structure.
+ */
+function commerce_price_field_data_property_info($name = NULL) {
+  return array(
+    'amount' => array(
+      'label' => t('Amount'),
+      'description' => !empty($name) ? t('Amount value of field %name', array('%name' => $name)) : '',
+      'type' => 'decimal',
+      'getter callback' => 'entity_property_verbatim_get',
+      'setter callback' => 'entity_property_verbatim_set',
+    ),
+    'amount_decimal' => array(
+      'label' => t('Amount (decimal)'),
+      'description' => !empty($name) ? t('Amount value of field %name (as a decimal)', array('%name' => $name)) : '',
+      'type' => 'decimal',
+      'getter callback' => 'commerce_price_amount_decimal_get',
+      'computed' => TRUE,
+    ),
+    'currency_code' => array(
+      'label' => t('Currency'),
+      'description' => !empty($name) ? t('Currency code of field %name', array('%name' => $name)) : '',
+      'type' => 'text',
+      'getter callback' => 'entity_property_verbatim_get',
+      'setter callback' => 'entity_property_verbatim_set',
+      'options list' => 'commerce_currency_code_options_list',
+    ),
+    'data' => array(
+      'label' => t('Data'),
+      'description' => !empty($name) ? t('Data array of field %name', array('%name' => $name)) : '',
+      'type' => 'struct',
+      'getter callback' => 'entity_property_verbatim_get',
+      'setter callback' => 'entity_property_verbatim_set',
+    ),
+  );
+}
+
+/**
+ * Property getter callback returing the amount (as a decimal).
+ */
+function commerce_price_amount_decimal_get($data, array $options, $name, $type, $info) {
+  return commerce_currency_amount_to_decimal($data['amount'], $data['currency_code']);
+}
