@@ -156,12 +156,14 @@ function commerce_product_product_form_validate($form, &$form_state) {
         form_set_error('sku', t('This SKU is <a href="!url">already in use</a> and must be unique. Please supply another value.', array('!url' => url('admin/commerce/products/' . $product_id))));
       }
     }
+
     // Validate the SKU for invalid characters.
     if (!commerce_product_validate_sku($sku)) {
       form_set_error('sku', t('The SKU %sku contains invalid characters.', array('%sku' => $sku)));
     }
     // Trim leading and trailing whitespace from the SKU.
     form_set_value($form['sku'], trim($sku), $form_state);
+  }
   // Notify field widgets to validate their data.
     field_attach_form_validate('commerce_product', $product, $form, $form_state);
 }
