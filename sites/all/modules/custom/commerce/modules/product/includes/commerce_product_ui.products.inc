@@ -39,3 +39,17 @@ function commerce_product_ui_product_form_wrapper($product) {
   module_load_include('inc', 'commerce_product', 'includes/commerce_product.forms');
   return drupal_get_form('commerce_product_ui_product_form', $product);
 }
+
+/**
+ * Form callback wrapper: confirmation form for deleting a product.
+ *
+ * @param $product
+ *   The product object being deleted by this form.
+ *
+ * @see commerce_product_product_delete_form()
+ */
+function commerce_product_ui_product_delete_form_wrapper($product) {
+  // Include the forms file from the Product module.
+  module_load_include('inc', 'commerce_product', 'includes/commerce_product.forms');
+  return drupal_get_form('commerce_product_ui_product_delete_form', $product);
+}
