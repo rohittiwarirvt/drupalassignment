@@ -117,7 +117,7 @@ class DrupalCommerceEntityController extends DrupalDefaultEntityController imple
 
 			$this->entityCache[$entity->{$this->idKey}] = 	$entity;
 
-			unset($this->lockedEntities[$entities->{$this->idKey}]);
+			unset($this->lockedEntities[$entity->{$this->idKey}]);
 			$this->releaseLock();
 			$this->invoke($op, $entity);
 

@@ -95,3 +95,5 @@ function commerce_product_ui_product_type_delete_form_wrapper($type) {
 
   return drupal_get_form('commerce_product_ui_product_type_delete_form', $product_type);
 }
+
+

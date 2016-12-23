@@ -1,95 +1,95 @@
 <?php
 
-
+/**
+ * Implements hook_entity_info().
+ */
 function commerce_product_entity_info() {
-	$return = [
-	 'commerce_product' => [
-	 	'label' => t('Commerce Product'),
-	 	'controller class' => 'CommerceProductEntityController',
-	 	'base table' => 'commerce_product',
-	 	'revision table' => 'commerce_product_revision',
-	 	'fieldable' => TRUE,
-	 	'entity keys' => [
-	 		'id' => 'product_id',
-	 		'bundle' => 'type',
-	 		'label' => 'title',
-	 		'revision' => 'revision_id',
-	 		'language' => 'language'
-	 	],
-	 	'bundle keys' => [
-	 		'bundle' => 'type'
-	 	],
-	 	'bundles' => [
+  $return = array(
+    'commerce_product' => array(
+      'label' => t('Commerce Product'),
+      'controller class' => 'CommerceProductEntityController',
+      'base table' => 'commerce_product',
+      'revision table' => 'commerce_product_revision',
+      'fieldable' => TRUE,
+      'entity keys' => array(
+        'id' => 'product_id',
+        'bundle' => 'type',
+        'label' => 'title',
+        'revision' => 'revision_id',
+        'language' => 'language',
+      ),
+      'bundle keys' => array(
+        'bundle' => 'type',
+      ),
+      'bundles' => array(),
+      'load hook' => 'commerce_product_load',
+      'view modes' => array(
+        'full' => array(
+          'label' => t('Admin display'),
+          'custom settings' => FALSE,
+        ),
+      ),
+      'uri callback' => 'commerce_product_uri',
+      'metadata controller class' => '',
+      'token type' => 'commerce-product',
+      'access callback' => 'commerce_entity_access',
+      'access arguments' => array(
+        'user key' => 'uid',
+        'access tag' => 'commerce_product_access',
+      ),
+      'permission labels' => array(
+        'singular' => t('product'),
+        'plural' => t('products'),
+      ),
 
-	 	],
-	 	'load hook' => 'commerce_product_load',
-	 	'view modes' => [
-	 		'full' => [
-	 			'label' => t('Admin display'),
-	 			'custom settings' => FALSE
-	 		],
+      // Prevent Redirect alteration of the product form.
+      'redirect' => FALSE,
 
-	 	],
-	 	'uri callback' => 'commerce_product_uri',
-	 	'metadata contoller class' => '',
-	 	'token-type' => 'commerce-product',
-	 	'access callback' => 'commmerce_entity_access',
-	 	'access arguments' => [
-	 		'user key' => 'uid',
-	 		'access tag' => 'commmerce_product_acess'
-	 	] ,
-	 	'permission labels' => [
-	 		'singular' => t('product'),
-	 		'plural' => t('products'),
-	 	],
-	 	'redirect' => FALSE,
-	 	      // Add translation support.
-	      'translation' => array(
-	        'locale' => TRUE,
-	        'entity_translation' => array(
-	          'class' => 'EntityTranslationCommerceProductHandler',
-	          'bundle callback' => 'commerce_product_entity_translation_supported_type',
-	          'default settings' => array(
-	            'default_language' => LANGUAGE_NONE,
-	            'hide_language_selector' => FALSE,
-	          ),
-	        ),
-	      ),
+      // Add translation support.
+      'translation' => array(
+        'locale' => TRUE,
+        'entity_translation' => array(
+          'class' => 'EntityTranslationCommerceProductHandler',
+          'bundle callback' => 'commerce_product_entity_translation_supported_type',
+          'default settings' => array(
+            'default_language' => LANGUAGE_NONE,
+            'hide_language_selector' => FALSE,
+          ),
+        ),
+      ),
 
-	            // Add title replacement support for translations.
-	      'field replacement' => array(
-	        'title' => array(
-	          'field' => array(
-	            'type' => 'text',
-	            'cardinality' => 1,
-	            'translatable' => TRUE,
-	          ),
-	          'instance' => array(
-	            'label' => t('Title'),
-	            'required' => TRUE,
-	            'settings' => array(
-	              'text_processing' => 0,
-	            ),
-	            'widget' => array(
-	              'weight' => -5,
-	            ),
-	          ),
-	        ),
-	      ),
-	 ],
-	];
+      // Add title replacement support for translations.
+      'field replacement' => array(
+        'title' => array(
+          'field' => array(
+            'type' => 'text',
+            'cardinality' => 1,
+            'translatable' => TRUE,
+          ),
+          'instance' => array(
+            'label' => t('Title'),
+            'required' => TRUE,
+            'settings' => array(
+              'text_processing' => 0,
+            ),
+            'widget' => array(
+              'weight' => -5,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 
-	$return['commerce_product']['bundles'] = [];
+  $return['commerce_product']['bundles'] = array();
+  foreach (commerce_product_type_get_name() as $type => $name) {
+    $return['commerce_product']['bundles'][$type] = array(
+      'label' => $name,
+    );
+  }
 
-	foreach (commerce_product_type_get_name() as $type => $name) {
-		$return['commerce_product']['bundles'][$type] = [
-			'label' => $name
-		];
-	}
-
-	return $return;
+  return $return;
 }
-
 
 
 function commmerce_product_uri($product) {
@@ -259,4 +259,23 @@ function commerce_product_ui_product_type_delete($type, $skip_reset = FALSE) {
 
     // Notify other modules that this product type has been deleted.
   module_invoke_all('commerce_product_type_delete', $product_type, $skip_reset);
+}
+
+
+/**
+ * Checks to ensure a given SKU does not contain invalid characters.
+ *
+ * @param $sku
+ *   The string to validate as a SKU.
+ *
+ * @return
+ *   TRUE or FALSE indicating whether or not the SKU is valid.
+ */
+function commerce_product_validate_sku($sku) {
+  // Do not allow commas in a SKU.
+  if (strpos($sku, ',') !== FALSE) {
+    return FALSE;
+  }
+
+  return TRUE;
 }
