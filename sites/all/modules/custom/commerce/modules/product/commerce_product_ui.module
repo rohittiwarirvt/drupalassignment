@@ -300,3 +300,59 @@ function commerce_product_ui_forms($form_id, $args) {
 
   return $forms;
 }
+
+
+/**
+ * Implements hook_menu_alter().
+ */
+function commerce_product_ui_menu_alter(&$items) {
+  // Transform the field UI tabs into contextual links.
+  foreach (commerce_product_types() as $type => $product_type) {
+    // Convert underscores to hyphens for the menu item argument.
+    $type_arg = strtr($type, '_', '-');
+
+    $items['admin/commerce/products/types/' . $type_arg . '/fields']['context'] = MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE;
+    $items['admin/commerce/products/types/' . $type_arg . '/display']['context'] = MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE;
+  }
+}
+
+
+
+/**
+ * Implements hook_menu_local_tasks_alter().
+ */
+function commerce_product_ui_menu_local_tasks_alter(&$data, $router_item, $root_path) {
+  // Add action link 'admin/commerce/products/add' on 'admin/commerce/products'.
+  if ($root_path == 'admin/commerce/products') {
+    $item = menu_get_item('admin/commerce/products/add');
+    if ($item['access']) {
+      $data['actions']['output'][] = array(
+        '#theme' => 'menu_local_action',
+        '#link' => $item,
+      );
+    }
+  }
+}
+
+
+/**
+ * Implements hook_admin_menu_map().
+ */
+function commerce_product_ui_admin_menu_map() {
+  // Add awareness to the administration menu of the various product types so
+  // they are included in the dropdown menu.
+  $type_args = array();
+
+  foreach (array_keys(commerce_product_types()) as $type) {
+    $type_args[] = strtr($type, '_', '-');
+  }
+
+  $map['admin/commerce/products/types/%'] = array(
+    'parent' => 'admin/commerce/products/types',
+    'arguments' => array(
+      array('%' => $type_args),
+    ),
+  );
+
+  return $map;
+}
