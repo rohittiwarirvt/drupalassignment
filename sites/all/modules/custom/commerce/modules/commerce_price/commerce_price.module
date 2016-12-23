@@ -61,6 +61,7 @@ function commerce_price_create_instance($field_name, 	$entity_type, $bundle, $la
  * Implements hook_field_info().
  */
 function commerce_price_field_info() {
+      dsm("inside hook field");
   return array(
     'commerce_price' => array(
       'label' => t('Price'),

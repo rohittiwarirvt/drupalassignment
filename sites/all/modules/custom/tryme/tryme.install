@@ -1,6 +1,37 @@
 <?php
 
-function commerce_update_7100() {
+function tryme_update_7100() {
   print_r("this is it");
   drupal_set_message(t("I am executong"), 'status', FALSE);
+}
+
+
+function tryme_field_schema($field) {
+  if ($field['type'] == 'dimensions') {
+    $schema['columns']['height'] = array(
+    'type' => 'int',
+    'not null' => FALSE,
+  );
+    $schema['columns']['width'] = array(
+    'type' => 'int',
+    'not null' => FALSE,
+    );
+    $schema['indexes'] = array(
+    'height' => array('height'),
+    'width' => array('width'),
+    );
+    if ($field['settings']['num_dimensions'] == 3) {
+      $schema['columns']['depth'] = array(
+      'type' => 'int',
+      'not null' => FALSE,
+      );
+      $schema['indexes']['depth'] = array('depth');
+      }
+      $schema['columns']['units'] = array(
+      'type' => 'varchar',
+      'length' => 10,
+      'not null' => FALSE,
+      );
+      return $schema;
+  }
 }
