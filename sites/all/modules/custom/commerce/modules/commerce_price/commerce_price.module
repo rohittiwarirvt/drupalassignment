@@ -582,3 +582,281 @@ function commerce_price_field_data_property_info($name = NULL) {
 function commerce_price_amount_decimal_get($data, array $options, $name, $type, $info) {
   return commerce_currency_amount_to_decimal($data['amount'], $data['currency_code']);
 }
+
+
+
+
+/**
+ * Combines the price components of two prices into one components array,
+ *   merging all components of the same type into a single component.
+ *
+ * @param $price
+ *   The base price array whose full data array will be returned.
+ * @param $price2
+ *   A price array whose components will be combined with those of the base price.
+ *
+ * @return
+ *   A data array with the two sets of components combined but without any
+ *     additional data from $price2's data array.
+ */
+
+function commerce_price_components_combine($price, $price2) {
+  // Ensure the base price data array has a components array.
+  if (empty($price['data']['components'])) {
+    $price['data']['components'] = array();
+  }
+
+    // Loop over the components in the second price's data array.
+  foreach ($price2['data']['components'] as $key => $component) {
+    if ($component['price']['currency_code'] != $price['currency_code']) {
+      $component['price']['amount'] = commerce_currency_convert($component['price']['amount'], $component['price']['currency_code'], $price['currency_code']);
+      $component['price']['currency_code'] = $price['currency_code'];
+    }
+
+    // Look for a matching component in the base price data array.
+    $matched = FALSE;
+    foreach ($price['data']['components'] as $base_key => $base_component) {
+      // If the component type matches the component in question...
+      if ($base_component['name'] == $component['name']) {
+        // Add the two prices together and mark this as a match.
+        $price['data']['components'][$base_key]['price']['amount'] += $component['price']['amount'];
+        $matched = TRUE;
+      }
+    }
+    if (!$matched) {
+      $price['data']['components'][] = $component;
+    }
+  }
+  return $price['data'];
+}
+
+
+/**
+ * Returns the total value of components in a price array converted to the
+ *   currency of the price array.
+ *
+ * @param $price
+ *   The price whose components should be totalled.
+ * @param $name
+ *   Optionally specify a component name to restrict the totalling to components
+ *     of that type.
+ *
+ * @return
+ *   A price array representing the total value.
+ */
+function commerce_price_component_total($price, $name = NULL) {
+  // Initialize the total price array.
+  $total = array(
+    'amount' => 0,
+    'currency_code' => $price['currency_code'],
+    'data' => array(),
+  );
+
+  // Bail out if there are no components.
+  if (empty($price['data']['components'])) {
+    return $total;
+  }
+
+  // Loop over each component.
+  foreach ($price['data']['components'] as $key => $component) {
+    // If we're totalling all components or this one matches the requested type...
+    if (empty($name) || $name == $component['name']) {
+      $total['amount'] += commerce_currency_convert(
+        $component['price']['amount'],
+        $component['price']['currency_code'],
+        $total['currency_code']
+      );
+    }
+  }
+
+  return $total;
+}
+
+
+/**
+ * Returns the data array of a single value price field from a wrapped entity,
+ * using an optional default value if the entity does not have data in the field.
+ *
+ * @param $wrapper
+ *   An EntityMetadataWrapper for the entity whose price should be retrieved.
+ * @param $field_name
+ *   The name of the field to retrieve data from in the wrapper.
+ * @param $default
+ *   Boolean indicating whether or not to return a default price array if the
+ *   entity does not have data in the specified price field.
+ *
+ * @return
+ *   The data array of the specified price field.
+ */
+function commerce_price_wrapper_value($wrapper, $field_name, $default = FALSE) {
+  // Extract the price field's value array from the given entity.
+  $price = $wrapper->{$field_name}->value();
+
+  // If the value is empty and we want to return a default value for the field,
+  // use the auto creation value defined for Entity API usage.
+  if (empty($price) && $default) {
+    $price = commerce_price_field_data_auto_creation();
+  }
+
+  return $price;
+}
+
+/**
+ * Implements hook_commerce_price_component_type_info().
+ */
+function commerce_price_commerce_price_component_type_info() {
+  return array(
+    'base_price' => array(
+      'title' => t('Base price'),
+      'display_title' => t('Subtotal'),
+      'weight' => -50,
+    ),
+    'discount' => array(
+      'title' => t('Discount'),
+      'weight' => -10,
+    ),
+    'fee' => array(
+      'title' => t('Fee'),
+      'weight' => -20,
+    ),
+  );
+}
+
+
+/**
+ * Returns a list of all available price component types.
+ */
+function commerce_price_component_types() {
+  // First check the static cache for a components array.
+  $component_types = &drupal_static(__FUNCTION__);
+ // If it did not exist, fetch the types now.
+  if (!isset($component_types)) {
+    // Find components defined by hook_commerce_price_component_type_info().
+    $component_types = module_invoke_all('commerce_price_component_type_info');
+
+    // Add default values to the component type definitions.
+    foreach ($component_types as $name => &$component_type) {
+      $component_type += array(
+        'name' => $name,
+        'display_title' => $component_type['title'],
+        'weight' => 0,
+      );
+    }
+
+    // Allow the info to be altered by other modules.
+    drupal_alter('commerce_price_component_type_info', $component_types);
+  }
+
+  return $component_types;
+}
+
+/**
+ * Returns an array of price component type titles keyed by name.
+ */
+function commerce_price_component_titles() {
+  static $titles = array();
+
+  if (empty($titles)) {
+    foreach (commerce_price_component_types() as $name => $component_type) {
+      $titles[$name] = $component_type['title'];
+    }
+  }
+
+  return $titles;
+}
+
+
+/**
+ * Returns a component type array.
+ *
+ * @param $name
+ *   The machine-name of the component type to return.
+ *
+ * @return
+ *   A component type array or FALSE if not found.
+ */
+function commerce_price_component_type_load($name) {
+  $component_types = commerce_price_component_types();
+  return !empty($component_types[$name]) ? $component_types[$name] : FALSE;
+}
+
+
+/**
+ * Adds a price component to a price's data array.
+ *
+ * @param $price
+ *   The price array the component should be added to.
+ * @param $type
+ *   The machine-name of the component type to be added to the array.
+ * @param $component_price
+ *   The price array for the component as defined by the price field.
+ * @param $included
+ *   Boolean indicating whether or not the price component has already been
+ *   included in the price the component is being added to.
+ * @param $add_base_price
+ *   Boolean indicating whether or not to add the base price component if it is
+ *   missing.
+ *
+ * @return
+ *   The updated data array.
+ */
+function commerce_price_component_add($price, $type, $component_price, $included, $add_base_price = TRUE) {
+    // If no price components have been added yet, add the base price first.
+  if ($add_base_price && empty($price['data']['components']) && $type != 'base_price') {
+    $price['data'] = commerce_price_component_add($price, 'base_price', $price, TRUE);
+  }
+
+  $price['data']['components'][] = array(
+    'name' => $type,
+    'price' => $component_price,
+    'included' => $included,
+  );
+  return $price['data'];
+}
+
+/**
+ * Returns every component of a particular type from a price's data array.
+ *
+ * @param $price
+ *   The price array to load components from.
+ * @param $type
+ *   The machine-name of the component type to load.
+ *
+ * @return
+ *   An array of components from the data array matching the type.
+ */
+
+function commerce_price_component_load($price, $type) {
+  $components = array();
+
+  if (!empty($price['data']['components'])) {
+    foreach ($price['data']['components'] as $key => $component) {
+      if ($component['name'] == $type) {
+        $components[] = $component;
+      }
+    }
+  }
+
+  return $components;
+}
+
+/**
+ * Remove all instances of a particular component from a price's data array.
+ *
+ * @param &$price
+ *   The price array to remove components from.
+ * @param $type
+ *   The machine-name of the component type to delete.
+ *
+ * @return
+ *   The updated data array.
+ */
+function commerce_price_component_delete($price, $type) {
+  foreach ((array) $price['data']['components'] as $key => $component) {
+    if ($component['name'] == $type) {
+      unset($price['data']['components'][$key]);
+    }
+  }
+
+  return $price['data'];
+}

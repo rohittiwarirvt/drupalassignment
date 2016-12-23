@@ -12,7 +12,6 @@ function commerce_product_ui_product_type_new() {
 
 function commerce_product_ui_product_type_save($product_type, $configure = TRUE, $skip_reset = FALSE) {
 	$op = drupal_write_record('commerce_product_type', $product_type, empty($product_type['type']) ? 'type' : []);
-  dsm($op);
 	if ( !empty($product_type['is_new']) && $op !== FALSE) {
 		field_attach_create_bundle('commerce_product', $product_type['type']);
 
