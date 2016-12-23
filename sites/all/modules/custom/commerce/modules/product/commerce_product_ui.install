@@ -3,10 +3,9 @@
 
 function commerce_product_ui_install() {
 	$product_type = commerce_product_ui_product_type_new();
-
 	$product_type['type'] = 'product';
 	$product_type['name'] = t('Product');
-	$product_type['description'] = t('A basic product type');	
+	$product_type['description'] = t('A basic product type');
 	$product_type['in_new'] = TRUE;
 
 	commerce_product_ui_product_type_save($product_type, FALSE);
@@ -15,7 +14,7 @@ function commerce_product_ui_install() {
 /**
  * Implements hook_schema().
  */
-function commerce_product_ui_schema() {	
+function commerce_product_ui_schema() {
   $schema = array();
 
   $schema['commerce_product_type'] = array(
