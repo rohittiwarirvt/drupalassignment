@@ -1,1 +1,107 @@
 <?php
+
+function tryme_field_info() {
+  return array(
+      'dimensions' => array(
+        'label' => t('Dimensions'),
+        'description' => t('This field stores a height and width, and depth.'),
+        'settings' => array('num_dimensions' => 2),
+        'instance_settings' => array(
+        'max_height' => 0,
+        'max_width' => 0,
+        'max_depth' => 0,
+    ),
+      'default_widget' => 'dimfield_combined',
+      'default_formatter' => 'dimfield_default',
+    ),
+  );
+}
+
+
+function tryme_field_is_empty($item, $field) {
+  if ($field['type'] == 'dimensions') {
+    if (empty($item['height']) && empty($item['width']) &&
+      ($field['settings']['num_dimensions'] == 2 ||
+        empty($item['depth'])))
+    {
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+
+function tryme_field_settings_form($field, $instance, $has_data) {
+  if ($field['type'] == 'dimensions') {
+    $settings = $field['settings'];
+    $form['num_dimensions'] = array('#type' => 'select',
+      '#title' => t('How many dimensions'),
+      '#options' => array(
+        2 => t('Height and width'),
+        3 => t('Height, width, and depth'),
+        ),
+      '#default_value' => $settings['num_dimensions'],
+      '#required' => FALSE,
+      '#description' => t(
+        'Is this for a 2-dimensional or 3-dimensional object?'),
+      );
+    return $form;
+  }
+}
+
+function tryme_field_validate($obj_type, $object, $field,  $instance, $langcode, &$items, &$errors) {
+  if ($field['type'] == 'dimensions') {
+      $columns = array(
+        'height' => 'max_height',
+        'width' => 'max_width',
+        );
+      if ($field['settings']['num_dimensions'] == 3) {
+        $columns['depth'] = 'max_depth';
+      }
+      foreach ($items as $delta => $item) {
+        foreach ($columns as $column => $max_key) {
+          if ($instance['settings'][$max_key] &&
+            !empty($item[$column]) &&
+            $item[$column] > $instance['settings'][$max_key]) {
+            $errors[$field['field_name']][$delta][] = array(
+              'error' => 'dimfield_' . $max_key,
+              'message' => t(
+                '%name: The %column may not be larger than %max.',
+                array('%column' => $column,
+                  '%name' => $instance['label'],
+                  '%max' => $instance['settings'][$max_key]
+                  )
+                ),
+              );
+        }
+      }
+    }
+  }
+}
+
+
+function tryme_field_widget_info() {
+  return array(
+    'dimfield_simple' => array(
+      'label' => t('Separate text fields'),
+      'description' => t(
+        'Allow the user to enter each dimension separately.'),
+      'field types' => array('dimensions'),
+      'behaviors' => array(
+        'multiple values' => FIELD_BEHAVIOR_DEFAULT,
+        'default value' => FIELD_BEHAVIOR_DEFAULT,
+        ),
+      ),
+    'dimfield_combined' => array(
+      'label' => t('Combined text field'),
+      'description' => t(
+        'Allow the user to enter all dimensions together.'),
+      'field types' => array('dimensions'),
+      'settings' => array('size' => 10),
+      'behaviors' => array(
+        'multiple values' => FIELD_BEHAVIOR_DEFAULT,
+        'default value' => FIELD_BEHAVIOR_DEFAULT,
+        ),
+      ),
+    );
+}
