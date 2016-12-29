@@ -1,0 +1,45 @@
+<?php
+
+if (!defined('TTA_CLASSES_PATH')) {
+    define('TTA_CLASSES_PATH', drupal_get_path('module', 'wb_tta') . "/includes/classes/");
+}
+if (!defined('TTA_VIEWS_PATH')) {
+    define('TTA_VIEWS_PATH', '/' . drupal_get_path('module', 'wb_tta') . "/views/");
+}
+if (!defined('TTA_CSS_PATH')) {
+    define('TTA_CSS_PATH', drupal_get_path('module', 'wb_tta') . "/css/");
+}
+if (!defined('TTA_JS_PATH')) {
+    define('TTA_JS_PATH', drupal_get_path('module', 'wb_tta') . "/js/");
+}
+
+
+/**
+ * Implements hook_menu()
+ * @return [type] [description]
+ */
+
+function wb_tta_menu() {
+  $items = array();
+
+  $items['ttaimport'] = array(
+      'title' => 'TTA Routes',
+      'description' => 'Manage Routes, Get TTA data and other stuff',
+      'page callback' => 'system_admin_menu_block_page',
+      'file' => 'system.admin.inc',
+      'access callback' => TRUE,
+      'file path' => drupal_get_path('module', 'system'),
+    );
+
+  $items['ttaimport/routes'] = array(
+        'title' => 'Route PDFs',
+        'description' => 'Configuration for GoCary GTFS Bus Routes',
+        'page callback' => 'wb_tta_admin_form_callback',
+        'access callback' => TRUE,
+        'type' => MENU_NORMAL_ITEM,
+        'file' => 'includes/wb_tta.admin.inc'
+  );
+  return $items;
+}
+
+
