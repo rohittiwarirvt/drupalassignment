@@ -52,11 +52,31 @@ function wb_tta_admin_form_validate($form, &$form_state) {
 
 
 function handle_update_ttadata_submit($form, &$form_state) {
-  $dataRetriever = new TTADataRetriever();
-  $dataImporter = new TTADataImporter();
-
+  // extracter
+  $agency = "godurham";
+  $dataRetriever = new TTADataRetriever($agency);
   $tta_zip_filepath = drupal_realpath($form_state['storage']['tta_file_upload']->uri);
   $dataRetriever->extractFiles($tta_zip_filepath);
-  $dataImporter->importTTAData($dataRetriever->TTAFileDir());
 
+  //
+  $dataImporter = new TTADataImporter();
+  $dataImporter->setAgency($agency);
+  $dataImporter->setBaseDir($dataRetriever->TTAFileDir(). '/' . $agency);
+  $dataImporter->importTTAData();
+
+}
+
+function wb_tta_admin_form_callback_action() {
+   // extracter
+  $agency = "godurham";
+  $dataRetriever = new TTADataRetriever($agency);
+  // $tta_zip_filepath = drupal_realpath($form_state['storage']['tta_file_upload']->uri);
+  // $dataRetriever->extractFiles($tta_zip_filepath);
+
+  //
+  $dataImporter = new TTADataImporter();
+  $dataImporter->setAgency($agency);
+  $dataImporter->setBaseDir("sites/default/files/tta_scratch/godurham/1483091268/godurham");
+  $dataImporter->importTTAData();
+  return "test";
 }

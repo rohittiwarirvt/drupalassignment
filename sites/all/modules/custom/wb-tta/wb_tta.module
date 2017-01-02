@@ -39,6 +39,15 @@ function wb_tta_menu() {
         'type' => MENU_NORMAL_ITEM,
         'file' => 'includes/wb_tta.admin.inc'
   );
+
+  $items['ttaimport/routes/create-services'] = array(
+        'title' => 'Route PDFs',
+        'description' => 'Configuration for GoCary GTFS Bus Routes',
+        'page callback' => 'wb_tta_admin_form_callback_action',
+        'access callback' => TRUE,
+        'type' => MENU_NORMAL_ITEM,
+        'file' => 'includes/wb_tta.admin.inc'
+  );
   return $items;
 }
 

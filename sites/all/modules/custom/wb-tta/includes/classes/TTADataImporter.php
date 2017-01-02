@@ -1,199 +1,326 @@
 <?php
 
-
 class TTADataImporter {
 
+  private $baseDir;
+  protected $agency ;
 
-  public function importTTAData(){
-    //$txn = db_transaction();
-    $this->setBaseDir($baseDir);
-    //$this->deleteExistingGTFSData();
-    //$this->importGTFSDataInDirectory($this->getRegularGTFSDir());
-    //$this->importCSV($agenciesFilepath, "{$this->agencyName}_gtfs_agencies", $this->getAgenciesColumnMap());
+  public function setBaseDir($baseDir) {
+    $this->baseDir = $baseDir;
   }
 
- /**
-     * Helper function for inserting/upserting data from a CSV into a database table.
-     * @param $filepath string path to the CSV on disk
-     * @param $tableName string table to insert/upsert into
-     * @param $columnsMap array mapping of csv columns to database columns
-     * @param null $upsertKey string (optional) if specified, upserts will be performed instead of inserts. The specified db column name is used to determine whether to insert or update
-     * @throws GTFSDataProcessorException
-     */
-    private function importCSV($filepath) {
+  public function setAgency($agency) {
+    $this->agency = $agency;
+  }
 
-    // Format columns map
-    $fp = fopen($filepath, "r");
-    if (!$fp) {
-      // If there is no header information found, then there is no file data to import
-            return array();
-        }
-        // Start processing header positions on the real import
-        $headers = fgetcsv($fp, 0, ",");
-        // Flip the array to get the numeric indexes as values and the values as keys
-        $headers = array_flip($headers);
-    fclose($fp);
-    // Create a new columns map
-    $newcolumnsMap = array();
-    // Flip the columns map to get the file columns as the keys and the file data as the value
-    $flippedColumnMap = array_flip($columnsMap);
-    // Process the new headers map based on the first row of the file
-    foreach ($headers as $key => $header) {
-      // Search for the currently processed header on the Array values of the header mapping
-      if (array_key_exists($key, $flippedColumnMap)) {
-        $newcolumnsMap[$flippedColumnMap[$key]] = $header;
-      } else if (array_key_exists(substr($key, 3), $flippedColumnMap)) {
-        // Check if the value is not being recognized due to csv prefix on variable
-        $newcolumnsMap[$flippedColumnMap[substr($key, 3)]] = $header;
-      }
-    }
-    $csvData = array();
-    if ($tablename == "{$this->agencyName}_gtfs_timepoints") {
-      $csvData = $this->extractCSVDataForTimepoints($filepath, $newcolumnsMap);
-    } else {
-      $csvData = $this->extractCSVData($filepath, $newcolumnsMap);
-    }
-    if (!$upsertKey) {
-            $query = db_insert($tableName)->fields(array_keys($newcolumnsMap));
-        }
+  public function getBaseDir() {
+    return $this->baseDir;
+  }
 
-    $this->processLineNumber = 1;
-        foreach ($csvData as $rowData) {
-          if ($upsertKey) {
-                db_merge($tableName)->key(array($upsertKey => $rowData[$upsertKey]))->fields($rowData)->execute();
-            } else {
-                $query->values($rowData);
-            }
-          $this->processLineNumber++;
-        }
+  public function getAgency($agency) {
+    return $this->agency;
+  }
 
-        if (!$upsertKey) {
-            $query->execute();
-        }
-    }
 
-    private function extractCSVData($filepath, $columnsMap) {
-        $csvData = array();
+  public function importTTAData() {
 
-        $fp = fopen($filepath, "r");
-
-        if (!$fp) {
-            return array();
-            //$this->generateException("Could not open CSV file: $filepath");
-        }
-
-    fgetcsv($fp, 0, ","); # Skip headers
-
-        while (($row = fgetcsv($fp, 0, ",")) !== FALSE) {
-            $csvData[] = $this->extractDataFromRow($row, $columnsMap);
-        }
-
-        fclose($fp);
-
-        return $csvData;
-    }
-
-    private function extractCSVDataForTimepoints($filepath, $columnsMap) {
-        $csvData = array();
-
-        $fp = fopen($filepath, "r");
-
-        if (!$fp) {
-            return array();
-            //$this->generateException("Could not open CSV file: $filepath");
-        }
-
-    fgetcsv($fp, 0, ","); # Skip headers
-
-        while (($row = fgetcsv($fp, 0, ",")) !== FALSE) {
-          $newcsvData = $this->extractDataFromRow($row, $columnsMap);
-            $csvData[] = $newcsvData;
-          // Update the stop and set it to timepoint
-          $sql = "UPDATE {$this->agencyName}_gtfs_stop_times st
-                      JOIN {$this->agencyName}_gtfs_trips t ON (st.trip_id = t.trip_id)
-                       SET st.is_time_point = 1
-                     WHERE st.stop_id = :stop_id AND t.route_id = :route_id AND t.service_id = (:service_id)";
-            $bindVars = array(':stop_ids' => $newcsvData['stop_id'], ':route_id' => $newcsvData['route'], ':service_id' => $newcsvData['service_id']);
-            db_query($sql, $bindVars);
-        }
-
-        fclose($fp);
-
-        return $csvData;
-    }
-
-    /**
-     * $columnsMap format: array( <column_name> => <csv_column_number>, ...)
-     * @param $row array csv data
-     * @param $columnsMap array maps the database column to the column in a csv file
-     * @return array returns an array of format array( <column_name> => <column_value>, ...)
-     */
-    private function extractDataFromRow($row, $columnsMap) {
-        $rowData = array();
-
-        foreach ($columnsMap as $columnName => $rowIndex) {
-            $rowData[$columnName] = $row[$rowIndex];
-        }
-
-        return $rowData;
-    }
-
-    private function importTimePointsDataInDirectory($dataDir) {
-        try {
-            $searchPath = $this->getTimePointsDir()."/*.csv";
-            $timePointFiles = glob($searchPath);
-
-            if ($timePointFiles === false || count($timePointFiles) == 0) {
+    try {
+          $searchPath = $this->getBaseDir()."/*.csv";
+          $timePointFiles = glob($searchPath);
+          if ($timePointFiles === false || count($timePointFiles) == 0) {
                 //$this->generateException("Could not locate TTA Time Points data matching: $searchPath");
             }
 
             foreach ($timePointFiles as $timePointFile) {
-                $routeId = null;
-                $stops = array();
-                $serviceIds = array();
-                $fp = fopen($timePointFile, "r");
-                while (!feof($fp)) {
-                    $lineVals = fgetcsv($fp);
-                    if (!$lineVals) {
-                        continue;
-                    }
-
-                    if ($lineVals[0] == 'SERVICE') {
-                        $serviceIds = explode(",", $lineVals[1]);
-                    } elseif ($lineVals[0] == 'LINE') {
-                        $routeId = $lineVals[1];
-                    } elseif ($lineVals[0] == 'STOPID') {
-                        foreach (array_slice($lineVals, 1) as $stopId) {
-                            if ($stopId) {
-                                $stops[] = $stopId;
-                            }
-                        }
-                    }
-                }
-                fclose($fp);
-
-                if (!$routeId) {
-                    $this->generateException("Could not determine route for time point CSV: $timePointFile");
-                }
-
-                if (count($serviceIds) == 0) {
-                    $this->generateException("Could not determine service ids for time point CSV: $timePointFile");
-                }
-
-                if (count($stops) == 0) {
-                    $this->generateException("Could not determine time points for time point CSV: $timePointFile");
-                }
-
-                $sql = "UPDATE {$this->agencyName}_gtfs_stop_times st
-                          JOIN {$this->agencyName}_gtfs_trips t ON (st.trip_id = t.trip_id)
-                           SET st.is_time_point = 1
-                         WHERE st.stop_id IN (:stop_ids) AND t.route_id = :route_id AND t.service_id IN (:service_ids)";
-                $bindVars = array(':stop_ids' => $stops, ':route_id' => $routeId, ':service_ids' => $serviceIds);
-                db_query($sql, $bindVars);
+              $this->readCSV($timePointFile);
             }
-
         } catch (Exception $ex) {
-            $this->generateException("Error reading GIS data file: ".$ex->getMessage());
+            print_r("Exception added" . $ex->getMessage());
+            //$this->generateException("Error reading GIS data file: ".$ex->getMessage());
+        }
+  }
+  public function readCSV($filepath) {
+
+    // Format columns map
+    $csv = array_map('str_getcsv', file($filepath));
+    $filename = basename($filepath);
+    $service = array('SERVICE','Service Days','OPEN DATE', 'CLOSE DATE');
+    // have to check what is LINE
+   // $agency = array();
+    $trip = array('DIRECTION');
+    $route = array('RTID', 'RTENAME', 'LINE');
+    $fare = array('RT Fare');
+    $stop = array('TPNAME', 'STOPID', 'STOPLAT','STOPLNG'); // not sure TPNAME here signifies the As StopName
+    $stop_timing = array('RUNS');
+    $exception = array('RT Exception Dates');
+    $data = array();
+    foreach ($csv as $key => $value) {
+      $value = array_filter($value);
+      if (empty($value)) {
+        continue;
+      }
+      $flip_array = array_flip($value);
+      $needle = key($flip_array);
+     // print_R($needle);
+      if(in_array($needle, $service)) {
+        $data['service'][] = $value;
+      } else if (in_array($needle, $trip)) {
+        $data['trip'][] = $value;
+      } else if (in_array($needle, $route)) {
+        $data['route'][] = $value;
+      } else if (in_array($needle, $fare)) {
+        $data['fare'][] = $value;
+      } else if (in_array($needle, $stop)) {
+        $data['stop'][] = $value;
+      }  else if (in_array($needle, $exception)) {
+          $data['exception'][] = $value;
+      } else {
+        $data['stop_timing'][] = $value;
+      }
+    }
+
+    $service_data = $this->processService($data['service'], $filename);
+    //$this->service($service_data);
+
+    $agency_data = $this->processAgency();
+//    $this->agency($agency_data);
+
+    $route_data = $this->processRoute($data['route']);
+//    $this->route($route_data);
+
+    $fare_data = $this->processFare($data['fare']);
+  //  $this->fare($fare_data);
+
+    $stop_data = $this->processStop($data['stop']);
+   // $this->stop($stop_data);
+
+    $stop_timing_data = $this->processStopTimings($data['stop_timing'],$stop_data);
+   // $this->stop_timings($stop_timing_data);
+
+    $exception_data = $this->processException($data['exception']);
+   // $this->exception($exception_data);
+
+//    print_r($service_data);
+   // print_r($agency_data);
+    // print_r($route_data);
+     // print_r($fare_data);
+   //print_r($stop_data);
+   //  print_r($stop_timing_data);
+   // print_r($exception_data);
+
+    dsm($service_data, "service_data");
+    dsm($agency_data, "agency_data");
+    dsm($route_data, "route_data");
+    dsm($fare_data ,"fare_data");
+    dsm($stop_data,"stop_data");
+    dsm($stop_timing_data, "stop_timing_data");
+    dsm($exception_data, "exception_data");
+  }
+
+  public function processService($service, $filename) {
+    $sd = array('Service Days');
+    $od = array('OPEN DATE');
+    $cd = array('CLOSE DATE');
+
+    foreach ($service as $key => $value) {
+      $flip_array = array_flip($value);
+      $needle = key($flip_array);
+      if (in_array($needle, $sd)) {
+        // Depends how the date is given
+        $weeks = explode(",", $value[1]);
+        foreach ($weeks as $weekday) {
+          $weekday = trim(strtolower(trim($weekday,".")));
+          switch ($weekday) {
+            case 'sunday':
+              $data['is_available_sunday'] = 1;
+              break;
+            case 'saturday':
+              $data['is_available_saturday'] = 1;
+              break;
+            case 'monday':
+              $data['is_available_monday'] = 1;
+              break;
+            case 'tuesday':
+              $data['is_available_tuesday'] = 1;
+              break;
+            case 'wednesday':
+              $data['is_available_wednesday'] = 1;
+              break;
+            case 'thursday':
+              $data['is_available_thursday'] = 1;
+              break;
+            case 'friday':
+              $data['is_available_friday'] = 1;
+              break;
+            default:
+              # code...
+              break;
+          }
+        }
+      }  else if (in_array($needle, $od)) {
+        $data['start_date'] = $value[1];
+      } else if (in_array($needle, $cd)) {
+        $data['end_date'] = $value[1];
+      }
+    }
+
+    $days_array = array('is_available_sunday' => 'SUN', 'is_available_saturday' => 'SAT', 'is_weekday' =>'WKDY', 'is_weekend' => 'WKEND');
+    // $is_sunday = "SUN";
+    // $is_sat = "SAT";
+    // $is_weekday = "";\
+    foreach ($days_array as $key => $literal) {
+          if (strpos($filename, $literal)) {
+            $data[$key] = 1;
+          }
+
+    }
+    return $data;
+  }
+
+
+
+  public function processAgency($agency) {
+    return $agency['agency_name'] = $this->agency;
+  }
+
+  public function processRoute($route) {
+   // return $route;
+    $data = array();
+    $rsc = array('LINE');
+    $rid = array('RTID');
+    $rn = array('RTENAME');
+    foreach ($route as $key => $value) {
+      $flip_array = array_flip($value);
+      $needle = key($flip_array);
+      if (in_array($needle, $rsc)) {
+        $data['short_code'] = $value[1];
+      }  else if (in_array($needle, $rid)) {
+        $data['route_id'] = $value[1];
+      } else if (in_array($needle, $rn)) {
+        $data['route_name'] = $value[1];
+      }
+    }
+    return $data;
+  }
+
+
+  public function processFare($fare){
+    $data = array();
+    $rsc = array('RT Fare');
+    foreach ($fare as $key => $value) {
+      $flip_array = array_flip($value);
+      $needle = key($flip_array);
+      if (in_array($needle, $rsc)) {
+        $data['amount'] = $value[1];
+      }
+    }
+    return $data;
+  }
+
+
+  public function processStop($stop) {
+    $result = array();
+
+    foreach ($stop as $key => $value) {
+      $this->processStopMappings($result, $value, count($value));
+    }
+    return $result;
+  }
+
+  public function processStopMappings(&$result, $data, $col_count) {
+    $sn = array('TPNAME');
+    $sid = array('STOPID');
+    $slat= array('STOPLAT');
+    $slong = array('STOPLNG');
+    $needle = $data[0];
+    for ($inc = 0; $inc <= $col_count; $inc++){
+        $assingment = !empty($data[$inc]) ? $data[$inc]: NULL;
+      if (in_array($needle, $sn)) {
+         $result[$inc]['stop_name'] = $assingment;
+        }  else if (in_array($needle, $sid)) {
+          $result[$inc]['stop_id'] = $assingment;
+        } else if (in_array($needle, $slat)) {
+          $result[$inc]['latitude'] = $assingment;
+        } else if (in_array($needle, $slong)) {
+          $result[$inc]['longitude'] = $assingment;
         }
     }
+  }
+
+  public function processStopTimings($stop_timings, $stop_data) {
+    $data = array();
+    $this->trimStopTimming($stop_timings);
+    $keys = array('stop_sequence', 'direction');
+    foreach ($stop_data as $key => $value) {
+      if (isset($value['stop_id']) && $value['stop_id'] != 'STOPID') {
+       $keys =  array_merge($keys, array($value['stop_id']));
+      }
+    }
+
+    foreach ($stop_timings as $key => $value) {
+      $data[] = array_combine($keys, $value);
+    }
+    return $data;
+  }
+
+
+
+
+  public function trimStopTimming(&$stop_timings) {
+    $sruns = 'RUNS';
+    $start_index = NULL;
+    foreach ($stop_timings as $key => $value) {
+      if(array_search($sruns, $value) !== false) {
+        $start_index = $key;
+      }
+    }
+    $stop_timings = array_slice($stop_timings, $start_index + 1);
+
+  }
+
+  public function processException($exception) {
+    $data = array();
+    $rexp = array('RT Exception Dates');
+    foreach ($exception as $key => $value) {
+      $flip_array = array_flip($value);
+      $needle = key($flip_array);
+      if (in_array($needle, $rexp)) {
+        $data['exception_date'] = $value[1];
+      }
+    }
+    return $data;
+  }
+
+  public function service($service) {
+
+  }
+
+  public function agency($agency) {
+
+  }
+
+  public function route($route) {
+
+  }
+
+
+  public function fare($fare){
+
+  }
+
+
+  public function stop($stop) {
+
+  }
+
+  public function stopTimings($stop_timing) {
+
+  }
+
+  public function exception($exception) {
+
+  }
+
 }
+
+
