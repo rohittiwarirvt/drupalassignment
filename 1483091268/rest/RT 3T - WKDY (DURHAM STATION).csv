@@ -1,0 +1,15 @@
+SERVICE,1TWKD,,,
+LINE,3T,,,
+DIRECTION,Durham Station,,,
+OPEN DATE,20160806,,,
+CLOSE DATE,20170806,,,
+RTENAME,GoDurham - The Village-Glenview Station-NC 98,,,
+,,,,
+TRIP,PATTERN,TIME,TIME,TIME
+TPNAME,,Walmart at Glenview Station Stop 1,Raynor St at The Village,Durham Station 
+STOPID,,6291,5445,5774
+,,,,
+RUNS,,,,
+,,,,
+1,INBOUND,,1942,1955
+2,INBOUND,2030,2042,2055
