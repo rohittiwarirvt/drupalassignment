@@ -15,14 +15,14 @@ function wb_tta_schema() {
       'route_id' => array(
         'description' => 'The {Route ID} of this route.',
         'type' => 'varchar',
-        'length' => 30,
+        'length' => 80,
         'not null' => TRUE,
         'default' => '',
       ),
       'route_name' => array(
         'description' => 'The {Route Name} of this route.',
         'type' => 'varchar',
-        'length' => 50,
+        'length' => 100,
         'not null' => TRUE,
         'default' => '',
       ),
@@ -40,14 +40,13 @@ function wb_tta_schema() {
         'default' => 0,
       ),
       'created' => array(
-        'type' => 'timestamp',
-        'not null' => TRUE
+        'mysql_type' => 'timestamp',
+        'not null' => TRUE,
       )
     ),
 
     'unique keys' => array(
       'nid_vid' => array('id', 'agency_id'),
-      'agency_id' => array('agency_id'),
     ),
     // For documentation purposes only; foreign keys are not created in the
     // database.
@@ -60,69 +59,420 @@ function wb_tta_schema() {
     'primary key' => array('id'),
   );
 
-  $schema['node'] = array(
+// agency
+  $schema['agencies'] = array(
     // Example (partial) specification for table "node".
-    'description' => 'The base table for nodes.',
+    'description' => 'The base table for routes in tta.',
     'fields' => array(
-      'nid' => array(
-        'description' => 'The primary identifier for a node.',
+      'id' => array(
+        'description' => 'The primary identifier for a agency.',
         'type' => 'serial',
         'unsigned' => TRUE,
         'not null' => TRUE,
       ),
-      'vid' => array(
-        'description' => 'The current {node_revision}.vid version identifier.',
+      'agency_id' => array(
+        'description' => 'The {Route ID} of this route.',
+        'type' => 'varchar',
+        'length' => 80,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'agency_name' => array(
+        'description' => 'The {Route Name} of this route.',
+        'type' => 'varchar',
+        'length' => 100,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'created' => array(
+        'mysql_type' => 'timestamp',
+        'not null' => TRUE
+      )
+    ),
+
+    'unique keys' => array(
+      'id_agency_id' => array('id', 'agency_id'),
+    ),
+
+    'primary key' => array('id'),
+  );
+
+//services
+  $schema['services'] = array(
+    // Example (partial) specification for table "node".
+    'description' => 'The base table for Services in tta.',
+    'fields' => array(
+      'id' => array(
+        'description' => 'The primary identifier for a Services.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'service_id' => array(
+        'description' => 'The {Service ID} of this service.',
+        'type' => 'varchar',
+        'length' => 80,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'service_name' => array(
+        'description' => 'The {Service Name} of this service.',
+        'type' => 'varchar',
+        'length' => 100,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'is_available_monday' => array(
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 0,
+       ),
+      'is_available_tuesday' => array(
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 0,
+       ),
+      'is_available_wednesday' => array(
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 0,
+       ),
+      'is_available_thursday' => array(
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 0,
+       ),
+      'is_available_friday' => array(
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 0,
+       ),
+      'is_available_saturday' => array(
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 0,
+       ),
+      'is_available_sunday' => array(
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 0,
+       ),
+      'start_date' => array(
+        'mysql_type' => 'timestamp',
+        'not null' => TRUE,
+      ),
+      'end_date' => array(
+        'mysql_type' => 'timestamp',
+        'not null' => FALSE,
+      ),
+    ),
+
+    'unique keys' => array(
+      'id_serviceid_id' => array('id', 'service_id'),
+      'service_name' => array('service_name'),
+    ),
+    'primary key' => array('id'),
+  );
+
+//trips
+  $schema['trips'] = array(
+    // Example (partial) specification for table "node".
+    'description' => 'The mapping table sed for Trips in tta.',
+    'fields' => array(
+      'id' => array(
+        'description' => 'The primary identifier for a Trip.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'trip_id' => array(
+        'description' => 'The {Trip ID} of this route.',
+        'type' => 'varchar',
+        'length' => 80,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'direction_id' => array(
+        'description' => 'The {Direction id} of this route.',
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
         'default' => 0,
       ),
-      'type' => array(
-        'description' => 'The {node_type} of this node.',
+      'direction_name' => array(
+        'description' => 'The {Direction Name} of this Trip.',
         'type' => 'varchar',
-        'length' => 32,
-        'not null' => TRUE,
+        'length' => 45,
+        'not null' => FALSE,
         'default' => '',
       ),
-      'title' => array(
-        'description' => 'The title of this node, always treated as non-markup plain text.',
-        'type' => 'varchar',
-        'length' => 255,
+      'route_id' => array(
+        'description' => 'The {Route id} of this Trip.',
+        'type' => 'int',
+        'unsigned' => TRUE,
         'not null' => TRUE,
-        'default' => '',
+        'default' => 0,
       ),
+      'service_id' => array(
+        'description' => 'The {Service id} of this Trip.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'created' => array(
+        'mysql_type' => 'timestamp',
+        'not null' => TRUE
+      )
     ),
-    'indexes' => array(
-      'node_changed' => array('changed'),
-      'node_created' => array('created'),
-    ),
+
     'unique keys' => array(
-      'nid_vid' => array('nid', 'vid'),
-      'vid' => array('vid'),
+      'id_serviceid_routeid' => array('id', 'service_id','route_id'),
+      //@todo to add after trip id
+      //'trip_id' => array('trip_id'),
     ),
     // For documentation purposes only; foreign keys are not created in the
     // database.
     'foreign keys' => array(
-      'node_revision' => array(
-        'table' => 'node_revision',
-        'columns' => array('vid' => 'vid'),
+      'routes' => array(
+        'table' => 'routes',
+        'columns' => array('route_id' => 'id'),
       ),
-      'node_author' => array(
-        'table' => 'users',
-        'columns' => array('uid' => 'uid'),
+      'services' => array(
+        'table' => 'services',
+        'columns' => array('service_id' => 'id'),
       ),
     ),
-    'primary key' => array('nid'),
+    'primary key' => array('id'),
   );
-  // return $schema;
+
+// stops
+  $schema['stops'] = array(
+    // Example (partial) specification for table "node".
+    'description' => 'The base table for stops in tta.',
+    'fields' => array(
+      'stop_id' => array(
+        'description' => 'The primary identifier for a Stops.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'stop_code' => array(
+        'description' => 'The {Stop Code} of this Stops.',
+        'type' => 'varchar',
+        'length' => 150,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'stop_name' => array(
+        'description' => 'The {Route Name} of this route.',
+        'type' => 'varchar',
+        'length' => 150,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'latitude' => array(
+        'description' => 'The current {Latitude} of current stop.',
+        'type' => 'numeric',
+        'precision' =>10,
+        'scale' => 6,
+       // 'not null' => TRUE,
+        'default' => '0',
+      ),
+      'longitude' => array(
+        'description' => 'The current {Longitude} of current stop.',
+        'type' => 'numeric',
+        'precision' =>10,
+        'scale' => 6,
+       // 'not null' => TRUE,
+        'default' => '0',
+      ),
+      'created' => array(
+        'mysql_type' => 'timestamp',
+        'not null' => TRUE,
+      )
+    ),
+
+    'unique keys' => array(
+      'id_stopname' => array('stop_id', 'stop_name'),
+    ),
+    'primary key' => array('stop_id'),
+  );
+
+//stop_timings
+  $schema['stop_times'] = array(
+    // Example (partial) specification for table "node".
+    'description' => 'The base table for routes in tta.',
+    'fields' => array(
+      'id' => array(
+        'description' => 'The primary identifier for a Stop timings.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'stop_id' => array(
+        'description' => 'The {Stop id} of this Trip.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'trip_id' => array(
+        'description' => 'The {Trip id} of this Trip.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'stop_sequence' => array(
+        'description' => 'The {Stop sequence id} of this Trip.',
+        'type' => 'int',
+        'size' => 'small',
+        'not null' => TRUE,
+      ),
+      'arrival_time' => array(
+        'mysql_type' => 'TIME',
+        'not null' => TRUE,
+      ),
+      'created' => array(
+        'mysql_type' => 'timestamp',
+        'not null' => TRUE,
+      )
+    ),
+
+    'unique keys' => array(
+      'id_stopid' => array('id', 'stop_id'),
+    ),
+    // For documentation purposes only; foreign keys are not created in the
+    // database.
+    'foreign keys' => array(
+      'stop_id' => array(
+        'table' => 'stops',
+        'columns' => array('stop_id' => 'stop_id'),
+      ),
+    ),
+    'primary key' => array('id'),
+  );
+
+// route_fare
+  $schema['route_fares'] = array(
+    // Example (partial) specification for table "node".
+    'description' => 'The base table for routes in tta.',
+    'fields' => array(
+      'id' => array(
+        'description' => 'The primary identifier for a route.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'route_id' => array(
+        'description' => 'The {Route ID} of this route.',
+        'type' => 'varchar',
+        'length' => 80,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'route_name' => array(
+        'description' => 'The {Route Name} of this route.',
+        'type' => 'varchar',
+        'length' => 50,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'route_type' => array(
+        'description' => 'The current {Route Type} of current route.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 1,
+      ),
+      'route_id' => array(
+        'description' => 'The route id for the Route .',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'origin_id' => array(
+        'description' => 'The origin stop_id of fare.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'destination_id' => array(
+        'description' => 'The destination stop_id of fare..',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'created' => array(
+        'mysql_type' => 'timestamp',
+        'not null' => TRUE,
+      )
+    ),
+
+    'unique keys' => array(
+      'fareid_routid' => array('id', 'route_id'),
+    ),
+    // For documentation purposes only; foreign keys are not created in the
+    // database.
+    'foreign keys' => array(
+      'route_id' => array(
+        'table' => 'routes',
+        'columns' => array('route_id' => 'id'),
+      ),
+    ),
+    'primary key' => array('id'),
+  );
+
+//exception
+
+$schema['exceptions'] = array(
+  'description' => 'Overrides for dates when service would not be available!',
+  'fields' => array(
+    'id' => array(
+      'description' => 'Primary key!',
+      'type' => 'serial',
+      'not null' => TRUE,
+      'unsigned' => TRUE
+    ),
+    'service_id' => array(
+      'description' => 'TODO: please describe this field!',
+      'type' => 'int',
+      'not null' => TRUE,
+      'unsigned' => TRUE
+    ),
+    'exception_date' => array(
+      'description' => 'Dates of exception',
+      'mysql_type' => 'DATE',
+      'not null' => TRUE,
+    ),
+    'created' => array(
+      'description' => 'TODO: please describe this field!',
+      'mysql_type' => 'timestamp',
+      'not null' => TRUE,
+
+    ),
+  ),
+  'unique keys' => array(
+      'id_serviceid' => array('id', 'service_id'),
+    ),
+    // For documentation purposes only; foreign keys are not created in the
+    // database.
+    'foreign keys' => array(
+      'service_id' => array(
+        'table' => 'services',
+        'columns' => array('service_id' => 'id'),
+      ),
+    ),
+  'primary key' => array('id'),
+);
+
+   return $schema;
 }
 
-
-function wb_tta_enable(){
-  db_query('
-      ALTER TABLE {routes} 
-      MODIFY created TIMESTAMP NOT NULL 
-      DEFAULT CURRENT_TIMESTAMP 
-      ON UPDATE CURRENT_TIMESTAMP'
-    );    
-}

@@ -53,3 +53,36 @@ function wb_tta_menu() {
 }
 
 
+
+
+/**
+ * Implements hook_services_resources().
+ */
+
+
+function wb_tta_services_resources() {
+    return array(
+        'all_gtfs' => array(
+            'index' => array(
+                'help' => 'Retrieves all the GTFS data per table',
+                'file' => array('file' => 'inc', 'module' => 'wb_tta','name' => 'includes/all_wb_tta'),
+                'callback' => '_all_wb_tta_api_index',
+                'args' => array(
+                    array(
+                        'name' => 'agency',
+                        'type' => 'string',
+                        'description' => 'The agency for data to retreive.',
+                        'source' => array('param' => 'agency'),
+                        'optional' => FALSE,
+                    ),
+                ),
+                'access callback' => 'wb_tta_access_callback',
+            ),
+        ),
+    );
+}
+
+
+function wb_tta_access_callback() {
+  return TRUE;
+}

@@ -97,7 +97,7 @@ function batch_example_batch($input){
   $num_operations = count($input['files']);
 
 
-  for ($i = 0; $i < $num_operations; $i++) {  
+  for ($i = 0; $i < $num_operations; $i++) {
     // Each operation is an array consisting of
     // - The function to call.
     // - An array of arguments to that function.
@@ -106,17 +106,17 @@ function batch_example_batch($input){
       array(
         $input['files'][$i],
          $input['dataimporter'],
-        t('(Operation @operation)', array('@operation' => $i)),
+        t('(Operation @operation)', array('@operation' => $i + 1)),
       ),
     );
   }
   $batch = array(
     'operations' => $operations,
     'finished' => 'batch_example_finished',
-    'title' => t('Batch fix'),
-    'init_message' => t('Fix is starting...'),
+    'title' => t('Importing CSVs..'),
+    'init_message' => t('Csv Import is starting...'),
     'progress_message' => t('Processed @current out of @total.'),
-    'error_message' => t('Fix has encountered an error.')
+    'error_message' => t('Importing CSV has encountered an error.')
   );
   return $batch;
 }
@@ -135,7 +135,7 @@ function my_csv_import($file, $dataImporter, $operation_details, &$context) {
   $context['results'][] =  check_plain($filename);
 
   // Optional message displayed under the progressbar.
-  $context['message'] = t('Importing CSV "@title"', array('@title' => $filename)) . ' ' . $operation_details;
+  $context['message'] = t('Importing CSV @title =>', array('@title' => $filename)) . ' ' . $operation_details;
 
   _batch_example_update_http_requests();
 }
