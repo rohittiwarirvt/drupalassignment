@@ -78,13 +78,13 @@ class TTADataImporter {
       }
     }
 
-    dsm($data);
-    return "";
+
 
     $service_data = $this->processService($data['service'], $filename);
     $service = $this->service($service_data);
     drupal_set_message("Imported Service with Service ID $service");
-
+    dsm($data);
+   // return "";
     $agency_data = $this->processAgency();
     $agency = $this->agency($agency_data);
     drupal_set_message("Imported Agency with Agency ID $agency");
@@ -96,21 +96,26 @@ class TTADataImporter {
 
     $trip_data = $this->processTrip($data['trip'], $service, $route);
     $trip = $this->trip($trip_data);
+    drupal_set_message("Imported Trip with Trip ID $trip");
 
     $stop_data = $this->processStop($data['stop']);
     $this->stop($stop_data);
-
+    drupal_set_message("Imported Stop ");
 
     $stop_timing_data = $this->processStopTimings($data['stop_timing'],$stop_data);
     $stop_timing_data['trip_id'] = $trip;
     $this->stopTimings($stop_timing_data, $outputs);
-
+    drupal_set_message("Imported Stop Timings ");
     $exception_data = isset($data['exception']) ? $this->processException($data['exception']) : NULL;
    // $this->exception($exception_data);
 
     $fare_data = isset($data['fare']) ? $this->processFare($data['fare']) : NULL;
-    $fare_data = array_merge(array('route_id' => $route), $outputs, $fare_data);
-    $fare = $this->fare($fare_data);
+    if (!empty($fare_data)) {
+      $fare_data = array_merge(array('route_id' => $route), $outputs, $fare_data);
+      $fare = $this->fare($fare_data);
+      drupal_set_message("Imported Fare Succesfully");
+    }
+
     //trips
     drupal_set_message("Imported Succesfully $filename");
 
@@ -332,7 +337,7 @@ class TTADataImporter {
   }
 
   public function service($service) {
-
+    $service_id = NULL;
 
     $service['start_date'] = format_date(strtotime($service['start_date']), 'custom', 'Y-m-d 00:00:00');
     $service['end_date'] = format_date(strtotime($service['end_date']), 'custom', 'Y-m-d 00:00:00');
@@ -346,15 +351,16 @@ class TTADataImporter {
     ->fetchAssoc();
 
     if (empty($exist)) {
-      $route_id = db_insert('routes')
-                  ->fields($route)
+      $service_id = db_insert('services')
+                  ->fields($service)
                   ->execute();
     }
-    $service_id = isset($service_id) ? $service_id :  !empty($exist) ? $exist['id'] : NULL;
+    $service_id = !empty($service_id) ? $service_id :  (!empty($exist) ? $exist['id'] : NULL);
     return $service_id;
   }
 
   public function agency($agency = array()) {
+    $agency_id = NULL;
     $agency['created'] =  empty($agency['created']) ? format_date(time(), 'custom', 'Y-m-d 00:00:00') : $agency['created'];
     $agency = array_merge(['agency_name' => $this->agency, 'agency_id' => $this->agency], $agency);
 
@@ -371,12 +377,12 @@ class TTADataImporter {
                  ->fields($agency)
                   ->execute();
     }
-    $this->agency_id = isset($agency_id) ? $agency_id: !empty($exist) ? $exist['id'] : NULL;
+    $this->agency_id = isset($agency_id) ? $agency_id: (!empty($exist) ? $exist['id'] : NULL);
     return $this->agency_id;
   }
 
   public function route($route) {
-
+    $route_id = NULL;
     $route['agency_id'] = $this->agency_id;
 
     $exist = db_select('routes', 'r')
@@ -389,12 +395,13 @@ class TTADataImporter {
                   ->fields($route)
                   ->execute();
     }
-    $route_id = isset($route_id) ? $route_id :  !empty($exist) ? $exist['id'] : NULL;
+    $route_id = isset($route_id) ? $route_id :  (!empty($exist) ? $exist['id'] : NULL);
     return $route_id;
   }
 
 
   public function fare($fare){
+    $fare_id = NULL;
     $exist = db_select('route_fares', 'rf')
     ->fields('rf', array('id'))
     ->condition('route_id', $fare['route_id'])
@@ -405,7 +412,7 @@ class TTADataImporter {
                   ->fields($fare)
                   ->execute();
     }
-    $fare_id = isset($fare_id) ? $fare_id :  !empty($exist) ? $exist['id'] : NULL;
+    $fare_id = isset($fare_id) ? $fare_id :  (!empty($exist) ? $exist['id'] : NULL);
     return $fare_id;
   }
 
@@ -434,8 +441,9 @@ class TTADataImporter {
       reset($st_chunk2);
       $options['destination_id'] = key($st_chunk2);
        foreach ($st_chunk2 as $stopid => $time) {
-        $time =  format_date(strtotime($time), 'custom',  'H:i:s');
-        $stop_fields = array_merge($st_chunk1, ['stop_id' =>$stopid, 'arrival_time' => $time, 'trip_id' => $trip_id]);
+        $time = str_pad($time,4,'0',STR_PAD_LEFT);
+        $time_cal =  format_date(strtotime($time), 'custom',  'H:i:s');
+        $stop_fields = array_merge($st_chunk1, ['stop_id' =>$stopid, 'arrival_time' => $time_cal, 'trip_id' => $trip_id]);
         unset($stop_fields['direction']);
        $stop_id = db_merge('stop_times')
                       ->key(array('stop_id' => $stopid, 'arrival_time' => $time)) // Table name no longer needs {}
@@ -448,6 +456,7 @@ class TTADataImporter {
   }
 
   public function trip($trip) {
+    $trip_id = NULL;
     $exist = db_select('trips_back', 't')
     ->fields('t', array('id'))
     ->condition('service_id', $trip['service_id'])
@@ -460,7 +469,7 @@ class TTADataImporter {
                   ->fields($trip)
                   ->execute();
     }
-    $trip_id = isset($trip_id) ? $trip_id :  !empty($exist) ? $exist['id'] : NULL;
+    $trip_id = isset($trip_id) ? $trip_id :  (!empty($exist) ? $exist['id'] : NULL);
     return $trip_id;
   }
 
