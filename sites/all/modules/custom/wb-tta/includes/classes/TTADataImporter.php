@@ -22,7 +22,7 @@ class TTADataImporter {
   }
 
 
-  public function importTTAData() {
+  public function geFilesImportTTAData() {
 
     try {
           $searchPath = $this->getBaseDir()."/*.csv";
@@ -31,14 +31,17 @@ class TTADataImporter {
                 //$this->generateException("Could not locate TTA Time Points data matching: $searchPath");
             }
 
-            foreach ($timePointFiles as $timePointFile) {
-              $this->readCSV($timePointFile);
-            }
+            return $timePointFiles;
+            // foreach ($timePointFiles as $timePointFile) {
+            //   $this->readCSV($timePointFile);
+            // }
         } catch (Exception $ex) {
             print_r("Exception added" . $ex->getMessage());
             //$this->generateException("Error reading GIS data file: ".$ex->getMessage());
         }
   }
+
+
   public function readCSV($filepath) {
 
     // Format columns map
@@ -83,8 +86,6 @@ class TTADataImporter {
     $service_data = $this->processService($data['service'], $filename);
     $service = $this->service($service_data);
     drupal_set_message("Imported Service with Service ID $service");
-    dsm($data);
-   // return "";
     $agency_data = $this->processAgency();
     $agency = $this->agency($agency_data);
     drupal_set_message("Imported Agency with Agency ID $agency");
