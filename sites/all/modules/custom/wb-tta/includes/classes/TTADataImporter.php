@@ -458,7 +458,7 @@ class TTADataImporter {
 
   public function trip($trip) {
     $trip_id = NULL;
-    $exist = db_select('trips_back', 't')
+    $exist = db_select('trips', 't')
     ->fields('t', array('id'))
     ->condition('service_id', $trip['service_id'])
     ->condition('route_id', $trip['route_id'])
@@ -466,7 +466,7 @@ class TTADataImporter {
     ->fetchAssoc();
 
     if (empty($exist)) {
-      $trip_id = db_insert('trips_back')
+      $trip_id = db_insert('trips')
                   ->fields($trip)
                   ->execute();
     }
