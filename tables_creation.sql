@@ -1,3 +1,5 @@
+--lat long default
+--trip_id default
 use drupal;
 SET foreign_key_checks = 0;
 drop table routes;
@@ -11,11 +13,13 @@ SET foreign_key_checks = 1;
 
 truncate routes;
 truncate agencies;
+trucate stops;  
 truncate stop_times;
 truncate trips_back;
 truncate services;
-truncate exceptions;
 truncate route_fares;
+
+truncate exceptions;
 
 CREATE TABLE IF NOT EXISTS `routes` (
   `route_id` VARCHAR(255) NOT NULL,
