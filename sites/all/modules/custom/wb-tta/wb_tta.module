@@ -13,6 +13,7 @@ if (!defined('TTA_JS_PATH')) {
     define('TTA_JS_PATH', drupal_get_path('module', 'wb_tta') . "/js/");
 }
 
+module_load_include('inc', 'wb_tta', 'includes/wb_tta.admin');
 
 /**
  * Implements hook_menu()

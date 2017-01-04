@@ -2,6 +2,64 @@
 
 
 function wb_tta_schema() {
+  $schema['routes'] = array(
+    // Example (partial) specification for table "node".
+    'description' => 'The base table for routes in tta.',
+    'fields' => array(
+      'id' => array(
+        'description' => 'The primary identifier for a route.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'route_id' => array(
+        'description' => 'The {Route ID} of this route.',
+        'type' => 'varchar',
+        'length' => 30,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'route_name' => array(
+        'description' => 'The {Route Name} of this route.',
+        'type' => 'varchar',
+        'length' => 50,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'route_type' => array(
+        'description' => 'The current {Route Type} of current route.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 1,
+      ),
+      'agency_id' => array(
+        'description' => 'The title of this node, always treated as non-markup plain text.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'created' => array(
+        'type' => 'timestamp',
+        'not null' => TRUE
+      )
+    ),
+
+    'unique keys' => array(
+      'nid_vid' => array('id', 'agency_id'),
+      'agency_id' => array('agency_id'),
+    ),
+    // For documentation purposes only; foreign keys are not created in the
+    // database.
+    'foreign keys' => array(
+      'agencies' => array(
+        'table' => 'agencies',
+        'columns' => array('agency_id' => 'id'),
+      ),
+    ),
+    'primary key' => array('id'),
+  );
+
   $schema['node'] = array(
     // Example (partial) specification for table "node".
     'description' => 'The base table for nodes.',
@@ -56,5 +114,15 @@ function wb_tta_schema() {
     ),
     'primary key' => array('nid'),
   );
-  return $schema;
+  // return $schema;
+}
+
+
+function wb_tta_enable(){
+  db_query('
+      ALTER TABLE {routes} 
+      MODIFY created TIMESTAMP NOT NULL 
+      DEFAULT CURRENT_TIMESTAMP 
+      ON UPDATE CURRENT_TIMESTAMP'
+    );    
 }
