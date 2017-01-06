@@ -19,10 +19,18 @@ function wb_tta_admin_form($form, &$form_state) {
         '#type' => 'container',
     );
 
+    $form['tta_upload_container']['agency'] =  array(
+      '#type' => 'radios',
+      '#title' => 'Please select Agency',
+      '#required' => TRUE,
+      '#description' => t('Select Appropriate Agency you want to Import.'),
+      '#options' => tta_options_agencies(),
+     );
+
     $form['tta_upload_container']['tta_file_upload'] = array(
         '#name' => 'files[tta_file]',
         '#type' => 'file',
-        '#title' => t('GoCary GTFS Data (.zip)'),
+        '#title' => t('GTFS Data (.zip)'),
     );
 
     // Form submit actions
@@ -40,12 +48,26 @@ function wb_tta_admin_form($form, &$form_state) {
     return $form;
 }
 
+
+/**
+ * Agency options info callback.
+ */
+function tta_options_agencies() {
+  $agencies = array(
+    'godurham' => t("GoDurham"),
+    'gotriangle' => t("GoTriangle"),
+    'gocary' => t("GoCary"),
+    'gochapelhill' => t("GoChapelHill"),
+    'goraleigh' => t("GoRaleigh"),
+  );
+  return $agencies;
+}
 function wb_tta_admin_form_validate($form, &$form_state) {
   $file = file_save_upload('tta_file', array('file_validate_extensions' => array('zip')));
   if ($file) {
     $form_state['storage']['tta_file_upload'] = $file;
   } else {
-    form_set_error('tta_gtfs_file', t('No TTA  file was uploaded.'));
+    form_set_error('tta_gtfs_file', t('TTA  file was not uploaded.'));
   }
 
 }
@@ -53,7 +75,7 @@ function wb_tta_admin_form_validate($form, &$form_state) {
 
 function handle_update_ttadata_submit($form, &$form_state) {
   // extracter
-  $agency = "godurham";
+  $agency = $form_state['values']['agency'];
   $dataRetriever = new TTADataRetriever($agency);
   $tta_zip_filepath = drupal_realpath($form_state['storage']['tta_file_upload']->uri);
   $dataRetriever->extractFiles($tta_zip_filepath);
@@ -61,26 +83,9 @@ function handle_update_ttadata_submit($form, &$form_state) {
   //
   $dataImporter = new TTADataImporter();
   $dataImporter->setAgency($agency);
-  $dataImporter->setBaseDir($dataRetriever->TTAFileDir(). '/' . $agency);
-  $dataImporter->importTTAData();
+  $dataImporter->setBaseDir($dataRetriever->TTAFileDir());
 
-}
-
-function wb_tta_admin_form_callback_action() {
-
-   // extracter
-  $agency = "godurham";
-  $dataRetriever = new TTADataRetriever($agency);
-  // $tta_zip_filepath = drupal_realpath($form_state['storage']['tta_file_upload']->uri);
-  // $dataRetriever->extractFiles($tta_zip_filepath);
-
-  //
-  $dataImporter = new TTADataImporter();
-  $dataImporter->setAgency($agency);
-  $dataImporter->setBaseDir("sites/default/files/tta_scratch/godurham/1483091268/godurham");
-
-
- $_SESSION['http_request_count'] = 0;
+  $_SESSION['http_request_count'] = 0;
   $files = $dataImporter->geFilesImportTTAData();
   $params['files'] = $files;
   $params['dataimporter'] = $dataImporter;
@@ -91,25 +96,108 @@ function wb_tta_admin_form_callback_action() {
   return "import";
 }
 
+function wb_tta_admin_form_callback_action() {
+  $agency = "gotriangle";
+  $route_id = 1;
+  $query = db_select('agencies','a');
+  if (isset($agency)) {
+    $query->condition('a.agency_name', $agency,'=');
+  }
+  //$query->distinct();
+  $query->leftJoin('routes', 'r','a.id=r.agency_id');
+  //routes-field
+  $query->addField('r', 'id','route_id');
+  $query->addField('r', 'route_name','route_name');
+  $query->addField('r', 'route_id','actual_route_id');
+
+  if (isset($route_id)) {
+    $query->condition('r.id', $route_id,'=');
+  }
+
+
+  $result1 = $query->execute()
+          ->fetchAll(PDO::FETCH_ASSOC) ;
+
+  $result= array();
+
+  foreach ($result1 as  $key => $route) {
+   // dsm($route);
+    $query = db_select('trips','t');
+    $query->addField('t', 'id','trip_id');
+    $query->fields('t', array('direction_id', 'direction_name'));
+    $query->condition('t.route_id', $route['route_id'],'=');
+    $query->leftJoin('services', 'serv','t.service_id=serv.id');
+    $query->fields('serv');
+  //routes
+    $query->leftJoin('stop_times', 'st','t.id=st.trip_id');
+    $query->fields('st');
+  //routes-field
+
+  //route_fares
+    $query->leftJoin('stops', 's','s.stop_id=st.stop_id');
+    $query->fields('s', array('stop_id','stop_name','latitude','longitude'));
+        dpq($query);
+    $trips = $query->execute()
+          ->fetchAll(PDO::FETCH_ASSOC) ;
+  $result['routes'][$key] = $route;
+    foreach ($trips as  $trip_key=> $trip) {
+      // dsm($trip);
+      $result['routes'][$key]['trips'][$trip_key] = _wb_array_get($trip, array('trip_id', 'direction_id','direction_name'));
+      $result['routes'][$key]['trips'][$trip_key]['services'] =_wb_array_get($trip, array('service_name','is_available_monday','is_available_tuesday','is_available_wednesday','is_available_thursday','is_available_friday','is_available_saturday','is_available_sunday','start_date','end_date'));
+      $result['routes'][$key]['trips'][$trip_key]['stop_times'][] =_wb_array_get($trip, array('stop_id', 'arrival_time','stop_sequence','trip_id'));
+      $result['routes'][$key]['trips'][$trip_key]['stop_times']['stops'] =_wb_array_get($trip, array('stop_id', 'stop_code','stop_name','latitude', 'longitude','created'));
+    }
+  }
+
+  dsm($result);
+  //  // extracter
+  // $agency = "gotriangle";
+  // $dataRetriever = new TTADataRetriever($agency);
+  // // $tta_zip_filepath = drupal_realpath($form_state['storage']['tta_file_upload']->uri);
+  // // $dataRetriever->extractFiles($tta_zip_filepath);
+
+  // //
+  // $dataImporter = new TTADataImporter();
+  // $dataImporter->setAgency($agency);
+  // $dataImporter->setBaseDir("sites/default/files/tta_scratch/gotriangle/test2/");
+
+
+  // $_SESSION['http_request_count'] = 0;
+  // $files = $dataImporter->geFilesImportTTAData();
+  // foreach ($files as $key => $file) {
+  //   $dataImporter->readCSV($file->uri);
+  // }
+  // drupal_goto("/");
+  // $params['files'] = $files;
+  // $params['dataimporter'] = $dataImporter;
+
+
+  // if (isset($params) && !empty($params['files'])) {
+  //   $batch = batch_example_batch($params);
+  //   batch_set($batch);
+  //   batch_process("/ttaimport/routes");
+  // }
+
+  return "import";
+}
+
 
 
 function batch_example_batch($input){
   $num_operations = count($input['files']);
-
-
-  for ($i = 0; $i < $num_operations; $i++) {
-    // Each operation is an array consisting of
-    // - The function to call.
-    // - An array of arguments to that function.
+  $i = 1;
+  foreach ($input['files'] as $key => $file) {
     $operations[] = array(
       'my_csv_import',
       array(
-        $input['files'][$i],
+        $file->uri,
          $input['dataimporter'],
-        t('(Operation @operation)', array('@operation' => $i + 1)),
+        t('(Operation @operation)', array('@operation' => $i)),
       ),
     );
+    $i++;
   }
+
   $batch = array(
     'operations' => $operations,
     'finished' => 'batch_example_finished',

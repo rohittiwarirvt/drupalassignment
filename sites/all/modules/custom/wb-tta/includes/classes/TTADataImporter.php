@@ -25,8 +25,9 @@ class TTADataImporter {
   public function geFilesImportTTAData() {
 
     try {
-          $searchPath = $this->getBaseDir()."/*.csv";
-          $timePointFiles = glob($searchPath);
+          $searchPath = $this->getBaseDir();
+          $csvPatter = "/csv/";
+          $timePointFiles = file_scan_directory($searchPath, $csvPatter);
           if ($timePointFiles === false || count($timePointFiles) == 0) {
                 //$this->generateException("Could not locate TTA Time Points data matching: $searchPath");
             }
@@ -111,6 +112,7 @@ class TTADataImporter {
    // $this->exception($exception_data);
 
     $fare_data = isset($data['fare']) ? $this->processFare($data['fare']) : NULL;
+
     if (!empty($fare_data)) {
       $fare_data = array_merge(array('route_id' => $route), $outputs, $fare_data);
       $fare = $this->fare($fare_data);
@@ -304,12 +306,19 @@ class TTADataImporter {
     }
 
     foreach ($stop_timings as $key => $value) {
-      $data[] = array_combine($keys, $value);
+      $data[] = $this->_wb_tta_array_combine($keys, $value);
     }
     return $data;
   }
 
 
+  public function _wb_tta_array_combine($keys, $value) {
+    $key_count = count($keys);
+    for($i= 0; $i < $key_count; $i++) {
+      $result[$keys[$i]] = isset($value[$i]) ? $value[$i]: NULL;
+    }
+    return $result;
+  }
 
 
   public function trimStopTimming(&$stop_timings) {
@@ -442,12 +451,16 @@ class TTADataImporter {
       reset($st_chunk2);
       $options['destination_id'] = key($st_chunk2);
        foreach ($st_chunk2 as $stopid => $time) {
+        if (!isset($time) || empty($time)) {
+          continue;
+        }
         $time = str_pad($time,4,'0',STR_PAD_LEFT);
         $time_cal =  format_date(strtotime($time), 'custom',  'H:i:s');
         $stop_fields = array_merge($st_chunk1, ['stop_id' =>$stopid, 'arrival_time' => $time_cal, 'trip_id' => $trip_id]);
         unset($stop_fields['direction']);
+
        $stop_id = db_merge('stop_times')
-                      ->key(array('stop_id' => $stopid, 'arrival_time' => $time)) // Table name no longer needs {}
+                      ->key($stop_fields)
                       ->fields($stop_fields)
                       ->execute();
       }
