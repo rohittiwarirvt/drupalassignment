@@ -97,77 +97,77 @@ function handle_update_ttadata_submit($form, &$form_state) {
 }
 
 function wb_tta_admin_form_callback_action() {
-  $agency = "gotriangle";
-  $route_id = 1;
-  $query = db_select('agencies','a');
-  if (isset($agency)) {
-    $query->condition('a.agency_name', $agency,'=');
-  }
-  //$query->distinct();
-  $query->leftJoin('routes', 'r','a.id=r.agency_id');
-  //routes-field
-  $query->addField('r', 'id','route_id');
-  $query->addField('r', 'route_name','route_name');
-  $query->addField('r', 'route_id','actual_route_id');
-
-  if (isset($route_id)) {
-    $query->condition('r.id', $route_id,'=');
-  }
-
-
-  $result1 = $query->execute()
-          ->fetchAll(PDO::FETCH_ASSOC) ;
-
-  $result= array();
-
-  foreach ($result1 as  $key => $route) {
-   // dsm($route);
-    $query = db_select('trips','t');
-    $query->addField('t', 'id','trip_id');
-    $query->fields('t', array('direction_id', 'direction_name'));
-    $query->condition('t.route_id', $route['route_id'],'=');
-    $query->leftJoin('services', 'serv','t.service_id=serv.id');
-    $query->fields('serv');
-  //routes
-    $query->leftJoin('stop_times', 'st','t.id=st.trip_id');
-    $query->fields('st');
-  //routes-field
-
-  //route_fares
-    $query->leftJoin('stops', 's','s.stop_id=st.stop_id');
-    $query->fields('s', array('stop_id','stop_name','latitude','longitude'));
-        dpq($query);
-    $trips = $query->execute()
-          ->fetchAll(PDO::FETCH_ASSOC) ;
-  $result['routes'][$key] = $route;
-    foreach ($trips as  $trip_key=> $trip) {
-      // dsm($trip);
-      $result['routes'][$key]['trips'][$trip_key] = _wb_array_get($trip, array('trip_id', 'direction_id','direction_name'));
-      $result['routes'][$key]['trips'][$trip_key]['services'] =_wb_array_get($trip, array('service_name','is_available_monday','is_available_tuesday','is_available_wednesday','is_available_thursday','is_available_friday','is_available_saturday','is_available_sunday','start_date','end_date'));
-      $result['routes'][$key]['trips'][$trip_key]['stop_times'][] =_wb_array_get($trip, array('stop_id', 'arrival_time','stop_sequence','trip_id'));
-      $result['routes'][$key]['trips'][$trip_key]['stop_times']['stops'] =_wb_array_get($trip, array('stop_id', 'stop_code','stop_name','latitude', 'longitude','created'));
-    }
-  }
-
-  dsm($result);
-  //  // extracter
   // $agency = "gotriangle";
+  // $route_id = 1;
+  // $query = db_select('agencies','a');
+  // if (isset($agency)) {
+  //   $query->condition('a.agency_name', $agency,'=');
+  // }
+  // //$query->distinct();
+  // $query->leftJoin('routes', 'r','a.id=r.agency_id');
+  // //routes-field
+  // $query->addField('r', 'id','route_id');
+  // $query->addField('r', 'route_name','route_name');
+  // $query->addField('r', 'route_id','actual_route_id');
+
+  // if (isset($route_id)) {
+  //   $query->condition('r.id', $route_id,'=');
+  // }
+
+
+  // $result1 = $query->execute()
+  //         ->fetchAll(PDO::FETCH_ASSOC) ;
+
+  // $result= array();
+
+  // foreach ($result1 as  $key => $route) {
+  //  // dsm($route);
+  //   $query = db_select('trips','t');
+  //   $query->addField('t', 'id','trip_id');
+  //   $query->fields('t', array('direction_id', 'direction_name'));
+  //   $query->condition('t.route_id', $route['route_id'],'=');
+  //   $query->leftJoin('services', 'serv','t.service_id=serv.id');
+  //   $query->fields('serv');
+  // //routes
+  //   $query->leftJoin('stop_times', 'st','t.id=st.trip_id');
+  //   $query->fields('st');
+  // //routes-field
+
+  // //route_fares
+  //   $query->leftJoin('stops', 's','s.stop_id=st.stop_id');
+  //   $query->fields('s', array('stop_id','stop_name','latitude','longitude'));
+  //       dpq($query);
+  //   $trips = $query->execute()
+  //         ->fetchAll(PDO::FETCH_ASSOC) ;
+  // $result['routes'][$key] = $route;
+  //   foreach ($trips as  $trip_key=> $trip) {
+  //     // dsm($trip);
+  //     $result['routes'][$key]['trips'][$trip_key] = _wb_array_get($trip, array('trip_id', 'direction_id','direction_name'));
+  //     $result['routes'][$key]['trips'][$trip_key]['services'] =_wb_array_get($trip, array('service_name','is_available_monday','is_available_tuesday','is_available_wednesday','is_available_thursday','is_available_friday','is_available_saturday','is_available_sunday','start_date','end_date'));
+  //     $result['routes'][$key]['trips'][$trip_key]['stop_times'][] =_wb_array_get($trip, array('stop_id', 'arrival_time','stop_sequence','trip_id'));
+  //     $result['routes'][$key]['trips'][$trip_key]['stop_times']['stops'] =_wb_array_get($trip, array('stop_id', 'stop_code','stop_name','latitude', 'longitude','created'));
+  //   }
+  // }
+
+  // dsm($result);
+  //  // extracter
+   $agency = "gotriangle";
   // $dataRetriever = new TTADataRetriever($agency);
   // // $tta_zip_filepath = drupal_realpath($form_state['storage']['tta_file_upload']->uri);
   // // $dataRetriever->extractFiles($tta_zip_filepath);
 
   // //
-  // $dataImporter = new TTADataImporter();
-  // $dataImporter->setAgency($agency);
-  // $dataImporter->setBaseDir("sites/default/files/tta_scratch/gotriangle/test2/");
+  $dataImporter = new TTADataImporter();
+  $dataImporter->setAgency($agency);
+  $dataImporter->setBaseDir("sites/default/files/tta_scratch/gotriangle/test2/");
 
 
-  // $_SESSION['http_request_count'] = 0;
-  // $files = $dataImporter->geFilesImportTTAData();
-  // foreach ($files as $key => $file) {
-  //   $dataImporter->readCSV($file->uri);
-  // }
-  // drupal_goto("/");
+  $_SESSION['http_request_count'] = 0;
+  $files = $dataImporter->geFilesImportTTAData();
+  foreach ($files as $key => $file) {
+    $dataImporter->readCSV($file->uri);
+  }
+  drupal_goto("/");
   // $params['files'] = $files;
   // $params['dataimporter'] = $dataImporter;
 

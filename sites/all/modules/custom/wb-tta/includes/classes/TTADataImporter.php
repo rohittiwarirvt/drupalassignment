@@ -54,7 +54,7 @@ class TTADataImporter {
     $trip = array('DIRECTION');
     $route = array('RTID', 'RTENAME', 'LINE');
     $fare = array('RT Fare','FARE');
-    $stop = array('TPNAME', 'STOPID', 'STOPLAT','STOPLNG'); // not sure TPNAME here signifies the As StopName
+    $stop = array('TPNAME', 'STOPID', 'STOPLAT','STOPLNG','LATITUDE','LONGITUDE'); // not sure TPNAME here signifies the As StopName
     $stop_timing = array('RUNS');
     $exception = array('RT Exception Dates');
     $data = array();
@@ -81,8 +81,6 @@ class TTADataImporter {
         $data['stop_timing'][] = $value;
       }
     }
-
-
 
     $service_data = $this->processService($data['service'], $filename);
     $service = $this->service($service_data);
@@ -278,8 +276,8 @@ class TTADataImporter {
   public function processStopMappings(&$result, $data, $col_count) {
     $sn = array('TPNAME');
     $sid = array('STOPID');
-    $slat= array('STOPLAT');
-    $slong = array('STOPLNG');
+    $slat= array('STOPLAT','LATITUDE');
+    $slong = array('STOPLNG','LONGITUDE');
     $needle = $data[0];
     for ($inc = 0; $inc <= $col_count; $inc++){
         $assingment = !empty($data[$inc]) ? $data[$inc]: NULL;
