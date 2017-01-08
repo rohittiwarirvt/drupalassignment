@@ -95,15 +95,15 @@ class TTADataImporter {
 
 
     $trip_data = $this->processTrip($data['trip'], $service, $route);
-    $trip = $this->trip($trip_data);
-    drupal_set_message("Imported Trip with Trip ID $trip");
+    
+    //$trip = $this->trip($trip_data);
+    //drupal_set_message("Imported Trip with Trip ID $trip");
 
     $stop_data = $this->processStop($data['stop']);
     $this->stop($stop_data);
     drupal_set_message("Imported Stop ");
 
-    $stop_timing_data = $this->processStopTimings($data['stop_timing'],$stop_data);
-    $stop_timing_data['trip_id'] = $trip;
+    $stop_timing_data = $this->processStopTimings($data['stop_timing'],$stop_data, $trip_data);
     $this->stopTimings($stop_timing_data, $outputs);
     drupal_set_message("Imported Stop Timings ");
     $exception_data = isset($data['exception']) ? $this->processException($data['exception']) : NULL;
@@ -293,7 +293,7 @@ class TTADataImporter {
     }
   }
 
-  public function processStopTimings($stop_timings, $stop_data) {
+  public function processStopTimings($stop_timings, $stop_data, $trip_data) {
     $data = array();
     $this->trimStopTimming($stop_timings);
     $keys = array('stop_sequence', 'direction');
@@ -304,12 +304,36 @@ class TTADataImporter {
     }
 
     foreach ($stop_timings as $key => $value) {
-      $data[] = $this->_wb_tta_array_combine($keys, $value);
+      $trip_array = $this->_wb_tta_array_combine($keys, $value);
+      $temp = array_values($trip_array);
+      $trip_data['trip_id'] =  str_replace(' ', '-', implode(array_filter($temp)));
+      $direction_id = $this->processDirection($trip_array['direction']);
+      $trip_data['direction_id'] = $direction_id;
+      $trip_id = $this->trip($trip_data);
+      $trip_array['trip_id'] =  $trip_id;
+
+      $data[] =   $trip_array;
     }
     return $data;
   }
 
 
+  public function processDirection($direction) {
+    $inbound = array('INBOUND','AM SOUTH');
+    $outbound = array('OUTBOUND', 'PM SOUTH');
+
+    $needle = strtoupper($direction);
+    if (in_array( $needle, $outbound)) {
+      $direction_id = 0;
+    } else if (in_array($needle, $inbound)) {
+      $direction_id = 1;
+    } else {
+      $direction_id = 0;
+    }
+
+    return $direction_id;
+
+  }
   public function _wb_tta_array_combine($keys, $value) {
     $key_count = count($keys);
     for($i= 0; $i < $key_count; $i++) {
@@ -437,9 +461,11 @@ class TTADataImporter {
   }
 
   public function stopTimings($stop_timings, &$options = array()) {
-    $trip_id = $stop_timings['trip_id'];
-    unset($stop_timings['trip_id']);
+
      foreach ($stop_timings as $key => $stop_timing) {
+      $trip_id = isset($stop_timing['trip_id']) ?  $stop_timing['trip_id'] :  NULL;
+      $trip_id = intval($trip_id);
+      unset($stop_timing['trip_id']);
       $st_chunk1 = array_slice($stop_timing,0, 2);
       $st_chunk2 = array_slice($stop_timing,2, NULL, TRUE);
       // code for fare source and destination
@@ -448,7 +474,8 @@ class TTADataImporter {
       // code for fare destionation
       reset($st_chunk2);
       $options['destination_id'] = key($st_chunk2);
-       foreach ($st_chunk2 as $stopid => $time) {
+      $i = 1;
+      foreach ($st_chunk2 as $stopid => $time) {
         if (!isset($time) || empty($time)) {
           continue;
         }
@@ -456,13 +483,13 @@ class TTADataImporter {
         $time_cal =  format_date(strtotime($time), 'custom',  'H:i:s');
         $stop_fields = array_merge($st_chunk1, ['stop_id' =>$stopid, 'arrival_time' => $time_cal, 'trip_id' => $trip_id]);
         unset($stop_fields['direction']);
-
-       $stop_id = db_merge('stop_times')
+        $stop_fields['stop_sequence'] = $i;
+        $i++;
+        $stop_id = db_merge('stop_times')
                       ->key($stop_fields)
                       ->fields($stop_fields)
                       ->execute();
       }
-
     }
     return true;
   }
@@ -473,6 +500,7 @@ class TTADataImporter {
     ->fields('t', array('id'))
     ->condition('service_id', $trip['service_id'])
     ->condition('route_id', $trip['route_id'])
+    ->condition('trip_id', $trip['trip_id'])
     ->execute()
     ->fetchAssoc();
 

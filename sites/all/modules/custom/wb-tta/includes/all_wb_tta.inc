@@ -120,7 +120,6 @@ function _wb_tta_route_stops_api_index($route_id,$agency) {
 
 //first api callback
 function _wb_tta_route_trips_stops_api_index($route_id, $agency) {
-
   $query = db_select('agencies','a');
   if (isset($agency)) {
     $query->condition('a.agency_name', $agency,'=');
@@ -136,14 +135,12 @@ function _wb_tta_route_trips_stops_api_index($route_id, $agency) {
     $query->condition('r.id', $route_id,'=');
   }
 
-
   $result1 = $query->execute()
           ->fetchAll(PDO::FETCH_ASSOC) ;
 
   $result= array();
 
   foreach ($result1 as  $key => $route) {
-   // dsm($route);
     $query = db_select('trips','t');
     $query->addField('t', 'id','trip_id');
     $query->fields('t', array('direction_id', 'direction_name'));
@@ -161,16 +158,22 @@ function _wb_tta_route_trips_stops_api_index($route_id, $agency) {
         dpq($query);
     $trips = $query->execute()
           ->fetchAll(PDO::FETCH_ASSOC) ;
-  $result['routes'][$key] = $route;
-    foreach ($trips as  $trip_key=> $trip) {
-      // dsm($trip);
-      $result['routes'][$key]['trips'][$trip_key] = _wb_array_get($trip, array('trip_id', 'direction_id','direction_name'));
-      $result['routes'][$key]['trips'][$trip_key]['services'] =_wb_array_get($trip, array('service_name','is_available_monday','is_available_tuesday','is_available_wednesday','is_available_thursday','is_available_friday','is_available_saturday','is_available_sunday','start_date','end_date'));
-      $result['routes'][$key]['trips'][$trip_key]['stop_times'] =_wb_array_get($trip, array('stop_id', 'arrival_time','stop_sequence','trip_id'));
-      $result['routes'][$key]['trips'][$trip_key]['stop_times']['stops'] =_wb_array_get($trip, array('stop_id', 'stop_code','stop_name','latitude', 'longitude','created'));
+
+    $trips = _wb_tta_group_by($trips,'trip_id');
+    $result['routes'][$key] = $route;
+    $i = 0;
+    foreach ($trips as  $trip_key=> $stops) {
+            $result['routes'][$key]['trips'][$i] = _wb_array_get(current($stops), array('trip_id', 'direction_id','direction_name'));
+            $result['routes'][$key]['trips'][$i]['services'] =_wb_array_get(current($stops), array('service_name','is_available_monday','is_available_tuesday','is_available_wednesday','is_available_thursday','is_available_friday','is_available_saturday','is_available_sunday','start_date','end_date'));        
+
+      foreach ($stops as $stop_key => $stop) {        
+
+        $result['routes'][$key]['trips'][$i]['stop_times'][$stop_key] =_wb_array_get($stop, array('stop_id', 'arrival_time','stop_sequence','trip_id'));
+        $result['routes'][$key]['trips'][$i]['stop_times'][$stop_key]['stops'] =_wb_array_get($stop, array('stop_id', 'stop_code','stop_name','latitude', 'longitude','created'));
+      }
+      $i++;
     }
   }
-
   if (!empty($result)) {
       // There is data to return!
       $resposne_array = array();
