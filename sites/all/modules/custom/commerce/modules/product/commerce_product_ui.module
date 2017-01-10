@@ -10,7 +10,7 @@ function commerce_product_ui_product_type_new() {
 	];
 }
 
-function commerce_product_ui_product_type_save($product_type, $configure = TRUE, $skip_reset = FALSE) {
+function  commerce_product_ui_product_type_save($product_type, $configure = TRUE, $skip_reset = FALSE) {
 	$op = drupal_write_record('commerce_product_type', $product_type, empty($product_type['type']) ? 'type' : []);
 	if ( !empty($product_type['is_new']) && $op !== FALSE) {
 		field_attach_create_bundle('commerce_product', $product_type['type']);
@@ -355,4 +355,26 @@ function commerce_product_ui_admin_menu_map() {
   );
 
   return $map;
+}
+
+
+/**
+ * Implements hook_entity_info_alter().
+ */
+function commerce_product_ui_entity_info_alter(&$entity_info) {
+  // Add a URI callback to the product entity.
+  $entity_info['commerce_product']['uri callback'] = 'commerce_product_ui_product_uri';
+
+  // Add callbacks and urls for administer translations.
+  $entity_info['commerce_product']['translation']['entity_translation'] += array(
+    'base path' => 'admin/commerce/products/%commerce_product',
+  );
+
+  // Expose the admin UI for product fields.
+  foreach ($entity_info['commerce_product']['bundles'] as $type => &$bundle) {
+    $bundle['admin'] = array(
+      'path' => 'admin/commerce/products/types/' . strtr($type, '_', '-'),
+      'access arguments' => array('administer product types'),
+    );
+  }
 }
