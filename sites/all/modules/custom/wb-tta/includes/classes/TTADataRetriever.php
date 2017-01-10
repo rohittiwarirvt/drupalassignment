@@ -11,7 +11,7 @@ class TTADataRetriever {
   public function TTAFileDir() {
     $time = time();
 
-    $this->TTAFileDirName = "sites/default/files/tta_scratch/{$this->agency}/$time/";
+    $this->TTAFileDirName = "sites/default/files/tta_scratch/{$this->agency}/$time";
     return $this->TTAFileDirName;
   }
 
@@ -32,8 +32,6 @@ class TTADataRetriever {
     }catch(Exception $e) {
       throw new Excetion ("Failed to extract ZIP: $file due to $e");
     }
-    $dirs = array_filter(glob($destination_path .'/*'), 'is_dir');
-    rename($dirs[0], $new_filepath);
   }
 
 }

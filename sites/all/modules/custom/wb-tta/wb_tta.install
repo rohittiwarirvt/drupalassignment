@@ -372,25 +372,12 @@ function wb_tta_schema() {
         'unsigned' => TRUE,
         'not null' => TRUE,
       ),
-      'route_id' => array(
-        'description' => 'The {Route ID} of this route.',
-        'type' => 'varchar',
-        'length' => 80,
-        'not null' => TRUE,
-        'default' => '',
-      ),
-      'route_name' => array(
-        'description' => 'The {Route Name} of this route.',
-        'type' => 'varchar',
-        'length' => 50,
-        'not null' => TRUE,
-        'default' => '',
-      ),
-      'route_type' => array(
-        'description' => 'The current {Route Type} of current route.',
-        'type' => 'int',
-        'not null' => TRUE,
-        'default' => 1,
+      'amount' => array(
+        'description' => 'The Fare amount for the Route.',
+        'type' => 'numeric',
+        'precision' =>7,
+        'scale' => 2,
+        'default' => '0',
       ),
       'route_id' => array(
         'description' => 'The route id for the Route .',

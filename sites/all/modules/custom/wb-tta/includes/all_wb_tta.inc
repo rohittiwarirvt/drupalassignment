@@ -1,12 +1,14 @@
 <?php
 
-function _all_wb_tta_api_index($agency) {
+
+//first api callback
+function _wb_tta_agency_api_index($agency) {
   //agencies
   $query = db_select('agencies','a');
   $query->addField('a', 'id','agency_id');
   $query->addField('a', 'agency_name','agency_name');
   $query->addField('a', 'agency_id','actual_agency_id');
-
+  $query->condition('a.agency_name', $agency,'=');
   //routes
   $query->leftJoin('routes', 'r','a.id=r.agency_id');
   //routes-field
@@ -20,6 +22,8 @@ function _all_wb_tta_api_index($agency) {
   //route-fares-field
   $query->fields('rf', array('origin_id','destination_id','amount'));
   $query->addField('rf', 'id','fare_id');
+
+
   $result = $query->execute()
           ->fetchAll(PDO::FETCH_ASSOC) ;
   if (!empty($result)) {
@@ -37,5 +41,157 @@ function _all_wb_tta_api_index($agency) {
     }
 }
 
+// all trips
+// stop_timings left join stops
+
+//first api callback
+function _wb_tta_route_stops_api_index($route_id,$agency) {
+  //agencies
+  // return $agency;
+  $query = db_select('agencies','a');
+  // $query->addField('a', 'id','agency_id');
+  // $query->addField('a', 'agency_name','agency_name');
+  // $query->addField('a', 'agency_id','actual_agency_id');
+  if (isset($agency)) {
+    $query->condition('a.agency_name', $agency,'=');
+  }
+
+  //addding distinct
+  $query->distinct();
+  //routes
+  $query->leftJoin('routes', 'r','a.id=r.agency_id');
+  //routes-field
+  $query->addField('r', 'id','route_id');
+  $query->addField('r', 'route_name','route_name');
+  $query->addField('r', 'route_id','actual_route_id');
+
+  if (isset($route_id)) {
+    $query->condition('r.id', $route_id,'=');
+  }
+  //route_fares
+  // $query->leftJoin('route_fares', 'rf','rf.route_id=r.id');
+
+  // agency left join
+  //
+  $query->leftJoin('trips', 't','t.route_id=r.id');
+  $query->addField('t', 'id','trip_id');
 
 
+  // $query->addField('a', 'agency_name','agency_name');
+  // $query->addField('a', 'agency_id','actual_agency_id');
+
+
+  //routes
+  $query->leftJoin('stop_times', 'st','t.id=st.trip_id');
+  //routes-field
+  // $query->addField('r', 'id','route_id');
+  // $query->addField('r', 'route_name','route_name');
+  // $query->addField('r', 'route_id','actual_route_id');
+
+  //route_fares
+  $query->leftJoin('stops', 's','s.stop_id=st.stop_id');
+
+  //route-fares-field
+  $query->fields('s', array('stop_id','stop_name','latitude','longitude'));
+  // $query->addField('rf', 'id','fare_id');
+  $query->groupBy('s.stop_id');
+
+  $result = $query->execute()
+          ->fetchAll(PDO::FETCH_ASSOC) ;
+
+  if (!empty($result)) {
+      // There is data to return!
+      $resposne_array = array();
+      $resposne_array['status'] = 'success';
+      $resposne_array['code'] = '600';
+      $resposne_array['message'] = 'GTFS data found.';
+      $resposne_array['data'] = $result;
+      return $resposne_array;
+    } else {
+      // There is no data to return...so let's notify this case
+      $err_msg = 'No GTFS Data found.';
+      return format_error('601', 'error', $err_msg);
+    }
+}
+
+
+// all trips
+// stop_timings left join stops
+
+//first api callback
+function _wb_tta_route_trips_stops_api_index($route_id, $agency) {
+
+  $query = db_select('agencies','a');
+  if (isset($agency)) {
+    $query->condition('a.agency_name', $agency,'=');
+  }
+  //$query->distinct();
+  $query->leftJoin('routes', 'r','a.id=r.agency_id');
+  //routes-field
+  $query->addField('r', 'id','route_id');
+  $query->addField('r', 'route_name','route_name');
+  $query->addField('r', 'route_id','actual_route_id');
+
+  if (isset($route_id)) {
+    $query->condition('r.id', $route_id,'=');
+  }
+
+
+  $result1 = $query->execute()
+          ->fetchAll(PDO::FETCH_ASSOC) ;
+
+  $result= array();
+
+  foreach ($result1 as  $key => $route) {
+   // dsm($route);
+    $query = db_select('trips','t');
+    $query->addField('t', 'id','trip_id');
+    $query->fields('t', array('direction_id', 'direction_name'));
+    $query->condition('t.route_id', $route['route_id'],'=');
+    $query->leftJoin('services', 'serv','t.service_id=serv.id');
+    $query->fields('serv');
+  //routes
+    $query->leftJoin('stop_times', 'st','t.id=st.trip_id');
+    $query->fields('st');
+  //routes-field
+
+  //route_fares
+    $query->leftJoin('stops', 's','s.stop_id=st.stop_id');
+    $query->fields('s', array('stop_id','stop_name','latitude','longitude'));
+        dpq($query);
+    $trips = $query->execute()
+          ->fetchAll(PDO::FETCH_ASSOC) ;
+  $result['routes'][$key] = $route;
+    foreach ($trips as  $trip_key=> $trip) {
+      // dsm($trip);
+      $result['routes'][$key]['trips'][$trip_key] = _wb_array_get($trip, array('trip_id', 'direction_id','direction_name'));
+      $result['routes'][$key]['trips'][$trip_key]['services'] =_wb_array_get($trip, array('service_name','is_available_monday','is_available_tuesday','is_available_wednesday','is_available_thursday','is_available_friday','is_available_saturday','is_available_sunday','start_date','end_date'));
+      $result['routes'][$key]['trips'][$trip_key]['stop_times'] =_wb_array_get($trip, array('stop_id', 'arrival_time','stop_sequence','trip_id'));
+      $result['routes'][$key]['trips'][$trip_key]['stop_times']['stops'] =_wb_array_get($trip, array('stop_id', 'stop_code','stop_name','latitude', 'longitude','created'));
+    }
+  }
+
+  if (!empty($result)) {
+      // There is data to return!
+      $resposne_array = array();
+      $resposne_array['status'] = 'success';
+      $resposne_array['code'] = '600';
+      $resposne_array['message'] = 'GTFS data found.';
+      $resposne_array['data'] = $result;
+      return $resposne_array;
+    } else {
+      // There is no data to return...so let's notify this case
+      $err_msg = 'No GTFS Data found.';
+      return format_error('601', 'error', $err_msg);
+    }
+}
+
+function format_error($code, $status, $message)
+{
+    $response_array = array();
+    $response_array ["code"] = $code;
+    $response_array["status"] = $status;
+    $response_array["message"] = $message;
+
+    drupal_json_output($response_array);
+}
