@@ -368,3 +368,77 @@ function commerce_currency_convert($amount, $currency_code, $target_currency_cod
   return $amount * ($currency['conversion_rate'] / $target_currency['conversion_rate']);
 }
 
+
+
+
+/**
+ * Converts a price amount to an integer value for storage in the database.
+ *
+ * @param $decimal
+ *   The decimal amount to convert to a price amount.
+ * @param $currency_code
+ *   The currency code of the price whose decimals value will be used to
+ *     multiply by the proper factor when converting the decimal amount.
+ * @param $round
+ *   Whether or not the return value should be rounded and cast to an integer;
+ *     defaults to TRUE as necessary for standard price amount column storage.
+ *
+ * @return
+ *   The appropriate price amount based on the currency's decimals value.
+ */
+function commerce_currency_decimal_to_amount($decimal, $currency_code, $round = TRUE) {
+  static $factors;
+
+  // If the divisor for this currency hasn't been calculated yet...
+  if (empty($factors[$currency_code])) {
+    // Load the currency and calculate its factor as a power of 10.
+    $currency = commerce_currency_load($currency_code);
+    $factors[$currency_code] = pow(10, $currency['decimals']);
+  }
+
+  // Ensure the amount has the proper number of decimal places for the currency.
+  if ($round) {
+    $decimal = commerce_currency_round($decimal, commerce_currency_load($currency_code));
+    return (int) round($decimal * $factors[$currency_code]);
+  }
+  else {
+    return $decimal * $factors[$currency_code];
+  }
+}
+
+
+/**
+ * Rounds a price amount for the specified currency.
+ *
+ * Rounding of the minor unit with a currency specific step size. For example,
+ * Swiss Francs are rounded using a step size of 0.05. This means a price of
+ * 10.93 is converted to 10.95.
+ *
+ * @param $amount
+ *   The numeric amount value of the price to be rounded.
+ * @param $currency
+ *   The currency array containing the rounding information pertinent to this
+ *     price. Specifically, this function looks for the 'rounding_step' property
+ *     for the step size to round to, supporting '0.05' and '0.02'. If the value
+ *     is 0, this function performs normal rounding to the nearest supported
+ *     decimal value.
+ *
+ * @return
+ *   The rounded numeric amount value for the price.
+ */
+function commerce_currency_round($amount, $currency) {
+  if (!$currency['rounding_step']) {
+    return round($amount, $currency['decimals']);
+  }
+
+  $modifier = 1 / $currency['rounding_step'];
+
+  return round($amount * $modifier) / $modifier;
+}
+
+/**
+ * Wraps commerce_currency_get_code() for use by the Entity module.
+ */
+function commerce_currency_code_options_list() {
+  return commerce_currency_get_code(TRUE);
+}
