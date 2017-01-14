@@ -19,7 +19,7 @@ class commerce_product_handler_field_product_type extends commerce_product_handl
       '#type' => 'checkbox',
       '#default_value' => !empty($this->options['use_raw_value']),
     );
-
+   }
    function render($values) {
     if ($type = $this->get_value($values)) {
       // Return the raw value if specified.

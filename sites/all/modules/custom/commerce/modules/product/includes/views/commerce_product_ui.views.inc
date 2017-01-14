@@ -1,4 +1,4 @@
-<?php 
+  <?php 
 
 /**
  * Export Drupal Commerce products to Views.
