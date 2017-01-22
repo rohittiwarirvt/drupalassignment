@@ -1,0 +1,263 @@
+<?php
+
+/**
+ * @file
+ * Defines the core Commerce order entity and API functions to manage orders and
+ * interact with them.
+ */
+
+/**
+ * Implements hook_entity_info().
+ */
+function commerce_order_entity_info() {
+  $return = array(
+    'commerce_order' => array(
+      'label' => t('Commerce Order', array(), array('context' => 'a drupal commerce order')),
+      'controller class' => 'CommerceOrderEntityController',
+      'locking mode' => 'pessimistic',
+      'base table' => 'commerce_order',
+      'revision table' => 'commerce_order_revision',
+      'load hook' => 'commerce_order_load',
+      'uri callback' => 'commerce_order_uri',
+      'label callback' => 'commerce_order_label',
+      'fieldable' => TRUE,
+      'entity keys' => array(
+        'id' => 'order_id',
+        'revision' => 'revision_id',
+        'bundle' => 'type',
+      ),
+      'bundle keys' => array(
+        'bundle' => 'type',
+      ),
+      'bundles' => array(
+        'commerce_order' => array(
+          'label' => t('Order', array(), array('context' => 'a drupal commerce order')),
+        ),
+      ),
+      'view modes' => array(
+        'administrator' => array(
+          'label' => t('Administrator'),
+          'custom settings' => FALSE,
+        ),
+        'customer' => array(
+          'label' => t('Customer'),
+          'custom settings' => FALSE,
+        ),
+      ),
+      'token type' => 'commerce-order',
+      'metadata controller class' => '',
+      'access callback' => 'commerce_entity_access',
+      'access arguments' => array(
+        'user key' => 'uid',
+        'access tag' => 'commerce_order_access',
+      ),
+      'permission labels' => array(
+        'singular' => t('order'),
+        'plural' => t('orders'),
+      ),
+
+      // // Prevent Redirect alteration of the order form.
+      'redirect' => FALSE,
+    ),
+  );
+
+  return $return;
+}
+
+
+/**
+ * Entity uri callback: gives modules a chance to specify a path for an order.
+ */
+function commerce_order_uri($order) {
+  // Allow modules to specify a path, returning the first one found.
+  foreach (module_implements('commerce_order_uri') as $module) {
+    $uri = module_invoke($module, 'commerce_order_uri', $order);
+
+    // If the implementation returned data, use that now.
+    if (!empty($uri)) {
+      return $uri;
+    }
+  }
+
+  return NULL;
+}
+
+
+/**
+ * Entity label callback: returns the label for an individual order.
+ */
+function commerce_order_label($entity, $entity_type) {
+  return t('Order @number', array('@number' => $entity->order_number));
+}
+
+/**
+ * Implements hook_hook_info().
+ */
+function commerce_order_hook_info() {
+  $hooks = array(
+    'commerce_order_state_info' => array(
+      'group' => 'commerce',
+    ),
+    'commerce_order_state_info_alter' => array(
+      'group' => 'commerce',
+    ),
+    'commerce_order_status_info' => array(
+      'group' => 'commerce',
+    ),
+    'commerce_order_status_info_alter' => array(
+      'group' => 'commerce',
+    ),
+    'commerce_order_uri' => array(
+      'group' => 'commerce',
+    ),
+    'commerce_order_view' => array(
+      'group' => 'commerce',
+    ),
+    'commerce_order_presave' => array(
+      'group' => 'commerce',
+    ),
+    'commerce_order_update' => array(
+      'group' => 'commerce',
+    ),
+    'commerce_order_insert' => array(
+      'group' => 'commerce',
+    ),
+    'commerce_order_delete' => array(
+      'group' => 'commerce',
+    ),
+  );
+  return $hooks;
+}
+
+
+/**
+ * Implements hook_enable().
+ */
+function commerce_order_enable() {
+  commerce_order_configure_order_type();
+}
+
+
+/**
+ * Ensures the line item field is present on the default order bundle.
+ */
+function commerce_order_configure_order_type($type = 'commerce_order') {
+  // Look for or add a line item reference field to the order type.
+  $field_name = 'commerce_line_items';
+  commerce_activate_field($field_name);
+  field_cache_clear();
+  $field = field_info_field($field_name);
+  $instance = field_info_instance('commerce_order', $field_name, $type);
+
+  if (empty($field)) {
+    $field = array(
+      'field_name' => $field_name,
+      'type' => 'commerce_line_item_reference',
+      'cardinality' => FIELD_CARDINALITY_UNLIMITED,
+      'entity_types' => array('commerce_order'),
+      'translatable' => FALSE,
+      'locked' => TRUE,
+    );
+    $field = field_create_field($field);
+  }
+
+  if (empty($instance)) {
+    $instance = array(
+      'field_name' => $field_name,
+      'entity_type' => 'commerce_order',
+      'bundle' => $type,
+      'label' => t('Line items'),
+      'settings' => array(),
+      'widget' => array(
+        'type' => 'commerce_line_item_manager',
+        'weight' => -10,
+      ),
+      'display' => array(),
+    );
+
+    // Set the default display formatters for various view modes.
+    foreach (array('default', 'customer', 'administrator') as $view_mode) {
+      $instance['display'][$view_mode] = array(
+        'label' => 'hidden',
+        'type' => 'commerce_line_item_reference_view',
+        'weight' => -10,
+      );
+    }
+    field_create_instance($instance);
+  }
+
+   // Add the order total price field.
+  commerce_price_create_instance('commerce_order_total', 'commerce_order', $type, t('Order total'), -8, FALSE, array('type' => 'commerce_price_formatted_components'));
+
+
+  // Add the customer profile reference fields for each profile type.
+  foreach (commerce_customer_profile_types() as $customer_profile_type => $profile_type) {
+    commerce_order_configure_customer_profile_type($customer_profile_type, $profile_type['name'], $type);
+  }
+}
+
+
+/**
+ * Configure the customer profile reference fields for the specified order type.
+ *
+ * @param $customer_profile_type
+ *   The machine-name of the customer profile type to reference.
+ * @param $label
+ *   The label to use for the profile type's reference field.
+ * @param $order_type
+ *   The machine-name of the order type to add fields to.
+ */
+
+ function commerce_order_configure_customer_profile_type($customer_profile_type, $label, $order_type = 'commerce_order') {
+  // Add the customer profile reference fields for each profile type.
+  $field_name = 'commerce_customer_' . $customer_profile_type;
+
+  // First check to ensure this field doesn't already exist and was just inactive
+  // because of the profile defining module being disabled previously.
+  commerce_activate_field($field_name);
+  field_cache_clear();
+
+  $field = field_info_field($field_name);
+  $instance = field_info_instance('commerce_order', $field_name, $order_type);
+
+  if (empty($field)) {
+    $field = array(
+      'field_name' => $field_name,
+      'type' => 'commerce_customer_profile_reference',
+      'cardinality' => 1,
+      'entity_types' => array('commerce_order'),
+      'translatable' => FALSE,
+      'settings' => array(
+        'profile_type' => $customer_profile_type,
+      ),
+    );
+    $field = field_create_field($field);
+  } 	
+
+  if (empty($instance)) {
+    $instance = array(
+      'field_name' => $field_name,
+      'entity_type' => 'commerce_order',
+      'bundle' => $order_type,
+      'label' => $label,
+      'widget' => array(
+        'type' => 'commerce_customer_profile_manager',
+        'weight' => -5,
+      ),
+      'display' => array(),
+    );
+    // Set the default display formatters for various view modes.
+    foreach (array('default', 'customer', 'administrator') as $view_mode) {
+      $instance['display'][$view_mode] = array(
+        'label' => 'above',
+        'type' => 'commerce_customer_profile_reference_display',
+        'weight' => -5,
+      );
+    }
+   
+    field_create_instance($instance);
+
+    variable_set('commerce_customer_profile_' . $customer_profile_type . '_field', $field_name);
+  }
+ }
+
