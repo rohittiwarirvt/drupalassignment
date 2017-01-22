@@ -1,0 +1,33 @@
+<?php
+
+
+/**
+ * Returns an array of customer profile type arrays keyed by type.
+ */
+function commerce_customer_profile_types() {
+  // First check the static cache for a profile types array.
+  $profile_types = &drupal_static(__FUNCTION__);
+
+  // If it did not exist, fetch the types now.
+  if (!isset($profile_types)) {
+    $profile_types = array();
+    // Find profile types defined by hook_commerce_customer_profile_type_info().
+    foreach (module_implements('commerce_customer_profile_type_info') as $module) {
+      foreach (module_invoke($module, 'commerce_customer_profile_type_info') as $type => $profile_type) {
+        // Initialize customer profile type properties if necessary.
+        $defaults = array(
+          'description' => '',
+          'help' => '',
+          'addressfield' => TRUE,
+          'module' => $module,
+          'label_callback' => 'commerce_customer_profile_default_label',
+        );
+        $profile_types[$type] = array_merge($defaults, $profile_type);
+      }
+     }
+    // Last allow the info to be altered by other modules.
+    drupal_alter('commerce_customer_profile_type_info', $profile_types);
+  }
+
+  return $profile_types;
+}
