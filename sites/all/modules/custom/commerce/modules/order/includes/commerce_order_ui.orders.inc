@@ -28,3 +28,32 @@ function commerce_order_ui_order_form_wrapper($order = NULL, $account = NULL) {
   module_load_include('inc', 'commerce_order', 'includes/commerce_order.forms');
   return drupal_get_form('commerce_order_ui_order_form', $order);
 }
+
+
+/**
+ * @file
+ * Page callbacks and form builder functions for administering orders.
+ */
+
+
+/**
+ * Form callback: edit the global order settings.
+ */
+function commerce_order_settings_form($form, &$form_state) {
+  $form['commerce_order_help_text'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Order creation help text'),
+    '#description' => t('Supply an optional help message to be displayed above the order add form.'),
+    '#default_value' => variable_get('commerce_order_help_text', ''),
+    '#weight' => -10,
+  );
+  $form['commerce_order_auto_revision'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Create new revisions when orders are updated by default.'),
+    '#description' => t('This default may be overridden on the order edit form but will always be respected for other order status updates.'),
+    '#default_value' => variable_get('commerce_order_auto_revision', TRUE),
+    '#weight' => 0,
+  );
+
+  return system_settings_form($form);
+}
