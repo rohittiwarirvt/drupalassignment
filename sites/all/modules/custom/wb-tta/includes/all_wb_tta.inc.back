@@ -1,0 +1,221 @@
+<?php
+
+function _all_wb_tta_api_indexa($agency) {
+  //agencies
+  // $query = db_select('agencies','a');
+  // $query->addField('a', 'id','agency_id');
+  // $query->addField('a', 'agency_name','agency_name');
+  // $query->addField('a', 'agency_id','actual_agency_id');
+
+  // //routes
+  // $query->leftJoin('routes', 'r','a.id=r.agency_id');
+  // //routes-field
+  // $query->addField('r', 'id','route_id');
+  // $query->addField('r', 'route_name','route_name');
+  // $query->addField('r', 'route_id','actual_route_id');
+
+  // //route_fares
+  // $query->leftJoin('route_fares', 'rf','rf.route_id=r.id');
+
+  // //route-fares-field
+  // $query->fields('rf', array('origin_id','destination_id','amount'));
+  // $query->addField('rf', 'id','fare_id');
+
+  // $query->condition('a.agency_name', $agency,'=');
+  // $result = $query->execute()
+  //         ->fetchAll(PDO::FETCH_ASSOC) ;
+
+  $agency_params = array(
+                      array(
+                        'column' =>'agency_name',
+                        'value' => $agency
+                        )
+                      );
+  $result['agency'] = get_agency($agency_params);
+
+  $routes_params = array(
+                      array(
+                        'column' =>'agency_id',
+                        'value' => $result['agency']['agency_id']
+                        )
+                      );
+
+  $agency_routes = get_routes($routes_params);
+
+  $result['routes'] = $agency_routes;
+
+  // foreach ($agency_routes as $route) {
+  //   $fare_params = array(
+  //     'table_name' => 'route_fare',
+  //     'field_alias' => array(
+  //         array('original' => 'id', 'aliased' => 'fare_id')
+  //       ),
+  //      'fields' => array('origin_id','destination_id','amount'),
+  //      'wheres' => array (
+  //         array(
+  //          'column' =>'route_id','value' => $route['route_id']
+  //           )
+  //       )
+  //   );
+  //   $output['routes'] =associate_entities($route,$fare_params);
+  //  // $result['routes']= [$child]
+  // }
+
+  if (!empty($result)) {
+      // There is data to return!
+      $resposne_array = array();
+      $resposne_array['status'] = 'success';
+      $resposne_array['code'] = '600';
+      $resposne_array['message'] = 'GTFS data found.';
+      $resposne_array['data'] = $result;
+      return $resposne_array;
+    } else {
+      // There is no data to return...so let's notify this case
+      $err_msg = 'No GTFS Data found.';
+      return format_error('601', 'error', $err_msg);
+    }
+}
+
+
+//first api callback
+function _all_wb_tta_api_index($agency) {
+  //agencies
+  // return $agency;
+  $query = db_select('agencies','a');
+  $query->addField('a', 'id','agency_id');
+  $query->addField('a', 'agency_name','agency_name');
+  $query->addField('a', 'agency_id','actual_agency_id');
+  $query->condition('a.agency_name', $agency,'=');
+  //routes
+  $query->leftJoin('routes', 'r','a.id=r.agency_id');
+  //routes-field
+  $query->addField('r', 'id','route_id');
+  $query->addField('r', 'route_name','route_name');
+  $query->addField('r', 'route_id','actual_route_id');
+
+  //route_fares
+  $query->leftJoin('route_fares', 'rf','rf.route_id=r.id');
+
+  //route-fares-field
+  $query->fields('rf', array('origin_id','destination_id','amount'));
+  $query->addField('rf', 'id','fare_id');
+
+
+  $result = $query->execute()
+          ->fetchAll(PDO::FETCH_ASSOC) ;
+
+  if (!empty($result)) {
+      // There is data to return!
+      $resposne_array = array();
+      $resposne_array['status'] = 'success';
+      $resposne_array['code'] = '600';
+      $resposne_array['message'] = 'GTFS data found.';
+      $resposne_array['data'] = $result;
+      return $resposne_array;
+    } else {
+      // There is no data to return...so let's notify this case
+      $err_msg = 'No GTFS Data found.';
+      return format_error('601', 'error', $err_msg);
+    }
+}
+
+
+// function get_agency($wheres) {
+//   $query = db_select('agencies','a');
+//   $query->addField('a', 'id','agency_id');
+//   $query->addField('a', 'agency_name','agency_name');
+//   $query->addField('a', 'agency_id','actual_agency_id');
+//   foreach ($wheres as $where) {
+//     $operator = isset($where['operator']) ? $where['operator'] : "=";
+//     $query->condition("a.{$where['column']}", $where['value'], $operator);
+//   }
+//   $result = $query
+//             ->execute()
+//             ->fetchAll(PDO::FETCH_ASSOC) ;
+//   return $result;
+// }
+
+// function get_routes($agency) {
+//   //routes
+
+//   $query = db_select('routes','r');
+//   //routes-field
+//   $query->addField('r', 'id','route_id');
+//   $query->addField('r', 'route_name','route_name');
+//   $query->addField('r', 'route_id','actual_route_id');
+//   foreach ($wheres as $where) {
+//     $operator = isset($where['operator']) ? $where['operator'] : "=";
+//     $query->condition("a.{$where['column']}", $where['value'], $operator);
+//   }
+//   $result = $query
+//             ->execute()
+//             ->fetchAll(PDO::FETCH_ASSOC) ;
+//   return $result;
+// }
+
+
+// function get_fares_routes($wheres) {
+//   //routes
+//   $query = db_select('route_fares','rf');
+//   //routes-field
+//   $query->fields('rf', array('origin_id','destination_id','amount'));
+//   $query->addField('rf', 'id','fare_id');
+//   foreach ($wheres as $where) {
+//     $operator = isset($where['operator']) ? $where['operator'] : "=";
+//     $query->condition("a.{$where['column']}", $where['value'], $operator);
+//   }
+//   $result = $query
+//             ->execute()
+//             ->fetchAll(PDO::FETCH_ASSOC) ;
+//   return $result;
+// }
+
+
+// function associate_entities($parent, $child) {
+//   //routes
+//   $query = db_select("{$child['table_name']}",'ch');
+//   //routes-field
+//   if ($child['fields']) {
+//     $query->fields('ch', $child['fields']);
+//   }
+
+//   if ($child['field_aliasing']) {
+//     foreach ($child['field_aliasing'] as $column) {
+//           $query->addField('ch', {$column['original']}, {$column['aliased']});
+//       }
+//   }
+
+//   foreach ($parent['wheres'] as $where) {
+//     $operator = isset($where['operator']) ? $where['operator'] : "=";
+//     $query->condition("ch.{$where['column']}", $where['value'], $operator);
+//   }
+//   $result['child'] = $query
+//             ->execute()
+//             ->fetchAll(PDO::FETCH_ASSOC) ;
+//   $result['parent'] = $parent['entity'];
+//   return $result;
+// }
+
+// function get_trips_for_route() {
+
+// }
+
+
+// function get_stops_for_trip(){
+
+// }
+
+// function get_stop_timings_for_trip() {
+
+// }
+
+
+function format_error($code, $status, $message)
+{
+    $response_array = array();
+    $response_array ["code"] = $code;
+    $response_array["status"] = $status;
+    $response_array["message"] = $message;
+
+    drupal_json_output($response_array);
+}

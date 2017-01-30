@@ -1,0 +1,47 @@
+<?php
+
+
+/**
+ * Deletes a product line item from a shopping cart order.
+ *
+ * @param $order
+ *   The shopping cart order to delete from.
+ * @param $line_item_id
+ *   The ID of the product line item to delete from the order.
+ * @param $skip_save
+ *   TRUE to skip saving the order after deleting the line item; used when the
+ *     order would otherwise be saved or to delete multiple product line items
+ *     from the order and then save.
+ *
+ * @return
+ *   The order with the matching product line item deleted from the line item
+ *     reference field.
+ */
+
+function commerce_cart_order_product_line_item_delete($order, $line_item_id, $skip_save = FALSE) {
+  $line_item = commerce_line_item_load($line_item_id);
+
+  // Check to ensure the line item exists and is a product line item.
+  if (!$line_item || !in_array($line_item->type, commerce_product_line_item_types())) {
+    return $order;
+  }
+
+  // Remove the line item from the line item reference field.
+  commerce_entity_reference_delete($order, 'commerce_line_items', 'line_item_id', $line_item_id);
+
+  // Wrap the line item to be deleted and extract the product from it.
+  $wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
+  $product = $wrapper->commerce_product->value();
+
+  // Invoke the product removal event with the line item about to be deleted.
+  rules_invoke_all('commerce_cart_product_remove', $order, $product, $line_item->quantity, $line_item);
+
+  // Delete the actual line item.
+  commerce_line_item_delete($line_item->line_item_id);
+
+  if (!$skip_save) {
+    commerce_order_save($order);
+  }
+
+  return $order;
+}

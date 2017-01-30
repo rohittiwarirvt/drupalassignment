@@ -82,6 +82,7 @@ class TTADataImporter {
       }
     }
 
+
     $service_data = $this->processService($data['service'], $filename);
     $service = $this->service($service_data);
     drupal_set_message("Imported Service with Service ID $service");
@@ -92,19 +93,21 @@ class TTADataImporter {
     $route_data = $this->processRoute($data['route'], $filename);
     $route = $this->route($route_data);
     drupal_set_message("Imported Route with Route ID $route");
+    dsm($data);
+   // return ;
 
-
-    $trip_data = $this->processTrip($data['trip'], $service, $route);
-    $trip = $this->trip($trip_data);
-    drupal_set_message("Imported Trip with Trip ID $trip");
 
     $stop_data = $this->processStop($data['stop']);
     $this->stop($stop_data);
     drupal_set_message("Imported Stop ");
+    $trip_data = $this->processTrip($data['trip'], $service, $route);
 
-    $stop_timing_data = $this->processStopTimings($data['stop_timing'],$stop_data);
-    $stop_timing_data['trip_id'] = $trip;
-    $this->stopTimings($stop_timing_data, $outputs);
+    $stop_timing_data = $this->processStopTimings($data['stop_timing'],$stop_data,$trip_data);
+    //$stop_timing_data['trip_id'] = $trip;
+   // $this->stopTimings($stop_timing_data, $outputs);
+
+
+   // drupal_set_message("Imported Trip with Trip ID $trip");
     drupal_set_message("Imported Stop Timings ");
     $exception_data = isset($data['exception']) ? $this->processException($data['exception']) : NULL;
    // $this->exception($exception_data);
@@ -293,7 +296,7 @@ class TTADataImporter {
     }
   }
 
-  public function processStopTimings($stop_timings, $stop_data) {
+  public function processStopTimings($stop_timings, $stop_data, $trip_data) {
     $data = array();
     $this->trimStopTimming($stop_timings);
     $keys = array('stop_sequence', 'direction');
@@ -302,10 +305,15 @@ class TTADataImporter {
        $keys =  array_merge($keys, array($value['stop_id']));
       }
     }
-
+    $i =
     foreach ($stop_timings as $key => $value) {
-      $data[] = $this->_wb_tta_array_combine($keys, $value);
+      array_merge()
+      $trip_id = $this->trip($trip_data);
+      $da = $this->_wb_tta_array_combine($keys, $value);
+      $data[] = array_merge($da, array('trip_id' => $trip_id));
+      dsm($data);
     }
+
     return $data;
   }
 
