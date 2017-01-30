@@ -23,9 +23,13 @@ function _wb_tta_agency_api_index($agency) {
   $query->fields('rf', array('origin_id','destination_id','amount'));
   $query->addField('rf', 'id','fare_id');
 
-
   $result = $query->execute()
           ->fetchAll(PDO::FETCH_ASSOC) ;
+
+  array_walk($result, "_wb_rate_random");
+
+
+
   if (!empty($result)) {
       // There is data to return!
       $resposne_array = array();
@@ -39,6 +43,11 @@ function _wb_tta_agency_api_index($agency) {
       $err_msg = 'No GTFS Data found.';
       return format_error('601', 'error', $err_msg);
     }
+}
+
+
+function _wb_rate_random(&$result, $key) {
+   $result['amount'] = is_null($result[$key]['amount']) ? rand(2,7) : $result[$key]['amount'];
 }
 
 // all trips
@@ -120,6 +129,9 @@ function _wb_tta_route_stops_api_index($route_id,$agency) {
 
 //first api callback
 function _wb_tta_route_trips_stops_api_index($route_id, $agency) {
+
+  $agency_route_table = "{$agency}_gtfs_routes";
+  $agency_stops_table = "{$agency}_gtfs_stops";
   $query = db_select('agencies','a');
   if (isset($agency)) {
     $query->condition('a.agency_name', $agency,'=');
@@ -155,21 +167,45 @@ function _wb_tta_route_trips_stops_api_index($route_id, $agency) {
   //route_fares
     $query->leftJoin('stops', 's','s.stop_id=st.stop_id');
     $query->fields('s', array('stop_id','stop_name','latitude','longitude'));
-        dpq($query);
+    if (db_table_exists($agency_stops_table)) {
+      $query->leftJoin($agency_stops_table, 'ls','ls.stop_code=s.stop_id');
+      $query->addField('ls', 'longitude','l_longitude');
+      $query->addField('ls', 'latitude','l_latitude');
+    }
     $trips = $query->execute()
           ->fetchAll(PDO::FETCH_ASSOC) ;
 
     $trips = _wb_tta_group_by($trips,'trip_id');
+
+    //get routes
+    if (db_table_exists($agency_route_table)) {
+     $rtquery = db_select($agency_route_table, 'lr');
+     $rtquery->fields('lr', array('route_url', 'pdf_file_id','short_name'));
+     $short_name = str_ireplace('rt ', '', $route['actual_route_id']);
+     $rtquery->condition('lr.short_name', '%' . db_like($short_name) . "%", 'LIKE');
+     $lg_routes = $rtquery->execute()->fetchAssoc();
+    // $lg_routes);
+     if( $lg_routes['pdf_file_id']) {
+       $file = file_load($lg_routes['pdf_file_id']);
+     }
+     $route['file_url'] = isset($file) ? file_create_url($file->uri) : NULL;
+     $route['route_url'] = $lg_routes['route_url'];
+    }
     $result['routes'][$key] = $route;
+
+
     $i = 0;
     foreach ($trips as  $trip_key=> $stops) {
             $result['routes'][$key]['trips'][$i] = _wb_array_get(current($stops), array('trip_id', 'direction_id','direction_name'));
-            $result['routes'][$key]['trips'][$i]['services'] =_wb_array_get(current($stops), array('service_name','is_available_monday','is_available_tuesday','is_available_wednesday','is_available_thursday','is_available_friday','is_available_saturday','is_available_sunday','start_date','end_date'));        
+            $result['routes'][$key]['trips'][$i]['services'] =_wb_array_get(current($stops), array('service_name','is_available_monday','is_available_tuesday','is_available_wednesday','is_available_thursday','is_available_friday','is_available_saturday','is_available_sunday','start_date','end_date'));
 
-      foreach ($stops as $stop_key => $stop) {        
+      foreach ($stops as $stop_key => $stop) {
 
         $result['routes'][$key]['trips'][$i]['stop_times'][$stop_key] =_wb_array_get($stop, array('stop_id', 'arrival_time','stop_sequence','trip_id'));
-        $result['routes'][$key]['trips'][$i]['stop_times'][$stop_key]['stops'] =_wb_array_get($stop, array('stop_id', 'stop_code','stop_name','latitude', 'longitude','created'));
+        $wb_stop = _wb_array_get($stop, array('stop_id', 'stop_code','stop_name','latitude', 'longitude','created'));
+        $wb_stop['latitude'] =  intval($wb_stop['latitude']) ? $wb_stop['latitude'] :  $stop['l_latitude'];
+        $wb_stop['longitude'] =  intval($wb_stop['longitude']) ? $wb_stop['longitude'] :  $stop['l_longitude'];
+        $result['routes'][$key]['trips'][$i]['stop_times'][$stop_key]['stops'] = $wb_stop;
       }
       $i++;
     }
@@ -189,12 +225,3 @@ function _wb_tta_route_trips_stops_api_index($route_id, $agency) {
     }
 }
 
-function format_error($code, $status, $message)
-{
-    $response_array = array();
-    $response_array ["code"] = $code;
-    $response_array["status"] = $status;
-    $response_array["message"] = $message;
-
-    drupal_json_output($response_array);
-}

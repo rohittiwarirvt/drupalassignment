@@ -3,7 +3,8 @@
 class TTADataImporter {
 
   private $baseDir;
-  protected $agency, $agency_id;
+  protected $agency, $agency_id, $route_name, $route_direction;
+
 
   public function setBaseDir($baseDir) {
     $this->baseDir = $baseDir;
@@ -31,11 +32,7 @@ class TTADataImporter {
           if ($timePointFiles === false || count($timePointFiles) == 0) {
                 //$this->generateException("Could not locate TTA Time Points data matching: $searchPath");
             }
-
             return $timePointFiles;
-            // foreach ($timePointFiles as $timePointFile) {
-            //   $this->readCSV($timePointFile);
-            // }
         } catch (Exception $ex) {
             print_r("Exception added" . $ex->getMessage());
             //$this->generateException("Error reading GIS data file: ".$ex->getMessage());
@@ -95,9 +92,6 @@ class TTADataImporter {
 
 
     $trip_data = $this->processTrip($data['trip'], $service, $route);
-    
-    //$trip = $this->trip($trip_data);
-    //drupal_set_message("Imported Trip with Trip ID $trip");
 
     $stop_data = $this->processStop($data['stop']);
     $this->stop($stop_data);
@@ -128,7 +122,7 @@ class TTADataImporter {
       $flip_array = array_flip($value);
       $needle = key($flip_array);
       if (in_array($needle, $dname)) {
-        $trip['direction_name'] = $value[1];
+        $this->route_direction = $trip['direction_name'] = $value[1];
       }
     }
 
@@ -188,15 +182,16 @@ class TTADataImporter {
       }
     }
 
-    $days_array = array('is_available_sunday' => 'SUN', 'is_available_saturday' => 'SAT', 'is_weekday' =>'WKDY', 'is_weekend' => 'WKEND');
+    $days_array = array('is_available_sunday' => 'SUN', 'is_available_saturday' => 'SAT', 'is_weekday' =>'WKD', 'is_weekend' => 'WKEND');
     // $is_sunday = "SUN";
     // $is_sat = "SAT";
     // $is_weekday = "";\
     foreach ($days_array as $key => $literal) {
-          if (strpos($filename, $literal)) {
+          if (stripos($filename, $literal)) {
+            $data[$key] = 1;
+          } elseif(stripos($data['service_name'], $literal)) {
             $data[$key] = 1;
           }
-
     }
 
     // weekdays logic
@@ -237,12 +232,15 @@ class TTADataImporter {
       }  else if (in_array($needle, $rid)) {
         $data['route_id'] = $value[1];
       } else if (in_array($needle, $rn)) {
-        $data['route_name'] = $value[1];
+        $this->route_name = $data['route_name'] = $value[1];
       }
     }
 
     $file_chuck = explode("-", $filename);
     $data['route_id'] = !isset($data['route_id']) ? trim($file_chuck[0]) : $data['route_id'];
+    if($index = strpos($data['route_id'], 'csv') !== FALSE) {
+      $data['route_id'] = str_replace('.csv', '', $data['route_id']);
+    }
     $data['route_type'] = 1;
     return $data;
   }
@@ -319,26 +317,87 @@ class TTADataImporter {
 
 
   public function processDirection($direction) {
-    $inbound = array('INBOUND','AM SOUTH');
-    $outbound = array('OUTBOUND', 'PM SOUTH');
+    $inbound = array('inbound', 'INBOUND','PM SOUTH','EAST','EAST LAST','PM EAST','PM NORTH','PM SOUTH','DUKE','FULL PM','LAST','LAST PM','IB AM','IB PM','SOUTH UNC','SOUTH CARR', 'FULL','NORTH','LOOP','AM WEST');
+    $outbound = array('OUTBOUND', 'OUTBOUND','AM SOUTH','EAST FIRST','AM EAST','AM NORTH','AM SOUTH','UNC','Outbound','FULL AM', 'FULL','LAST AM', 'OB AM','OB PM','WEST','WEST LAST','NORTH AM','NORTH PM','SOUTH','LAST');
 
-    $needle = strtoupper($direction);
-    if (in_array( $needle, $outbound)) {
-      $direction_id = 0;
-    } else if (in_array($needle, $inbound)) {
-      $direction_id = 1;
-    } else {
-      $direction_id = 0;
+
+    $direction_id = NULL;
+    $inbound_direction_names = array('RDU Airport and Raleigh','PM Loop','Cary and Raleigh','Southpoint and Chapel Hill','Southpoint Mall');
+    $inbound_directions = array_map('strtolower', $inbound_direction_names);
+    $outbound_direction_names = array('RDU Airport and Regional Transit Center','AM Loop','Cary and RTC','Cary and Lake Pine','Southpoint and Chapel Hill','Wendell and Zebulon');
+    $outboud_directions = array_map('strtolower', $outbound_direction_names);
+    $route_direction = str_replace('-', ' ', strtolower($this->route_direction)) ;
+    $route_name =  strtolower($this->route_name);
+
+    //route check
+      if (in_array($route_direction, $inbound_direction_names)) {
+        $direction_id = 0;
+      } else if (in_array($route_direction, $outbound_direction_names)) {
+        $direction_id = 1;
+      }
+
+    // direction and routename check
+
+    if (is_null($direction_id)) {
+      $global_inbd_otbd_check = $this->globalInbdOtbdCheck($route_direction, $route_name);
+      if (is_array($global_inbd_otbd_check)) {
+        if (in_array('inbound', $global_inbd_otbd_check)) {
+          $direction_id = 0;
+        } else if (in_array('outbound', $global_inbd_otbd_check)) {
+          $direction_id = 1;
+        }
+      }
+
     }
+
+    //tripwisecheck
+
+    if (is_null($direction_id)) {
+      $needle = strtoupper($direction);
+      if (in_array( $needle, $outbound)) {
+        $direction_id = 0;
+      } else if (in_array($needle, $inbound)) {
+        $direction_id = 1;
+      } else {
+        $direction_id = 0;
+      }
+    }
+
 
     return $direction_id;
-
   }
+
+  public function globalInbdOtbdCheck($route_direction, $route_name) {
+    $inbound = $outbound = FALSE;
+    $agency = $this->agency;
+    if (($index = strpos($route_name, $route_direction)) !== FALSE) {
+       $chunk =  explode('-', $route_name);
+      trim(current($chunk)) == $agency ? array_shift($chunk) : NULL;
+      if ( strpos(current($chunk), $route_direction) !== FALSE) {
+       $inbound = TRUE;
+      } elseif (strpos(end($chunk), $route_direction) !== FALSE) {
+       $outbound = TRUE;
+      }
+    }
+
+    $result = $inbound ? array('inbound') : ($outbound ? array('outbound') : FALSE);
+    return $result;
+  }
+
   public function _wb_tta_array_combine($keys, $value) {
+    // dsm($keys,'k');
+    // dsm($value, 'v');
     $key_count = count($keys);
-    for($i= 0; $i < $key_count; $i++) {
+    for($i = 0; $i < $key_count; $i++) {
+      if (isset($result[$keys[$i]]) ) {
+        $temptime = isset($value[$i]) ? $value[$i]: NULL;
+        $key_var = $keys[$i]  .'|' . $temptime;
+        $result[$key_var]  = $temptime;
+        continue;
+      }
       $result[$keys[$i]] = isset($value[$i]) ? $value[$i]: NULL;
     }
+    //dsm($result,'r');
     return $result;
   }
 
@@ -394,7 +453,7 @@ class TTADataImporter {
   public function agency($agency = array()) {
     $agency_id = NULL;
     $agency['created'] =  empty($agency['created']) ? format_date(time(), 'custom', 'Y-m-d 00:00:00') : $agency['created'];
-    $agency = array_merge(['agency_name' => $this->agency, 'agency_id' => $this->agency], $agency);
+    $agency = array_merge(array('agency_name' => $this->agency, 'agency_id' => $this->agency), $agency);
 
 
     $exist = db_select('agencies', 'a')
@@ -461,7 +520,7 @@ class TTADataImporter {
   }
 
   public function stopTimings($stop_timings, &$options = array()) {
-
+     //dsm($stop_timings, 'st');
      foreach ($stop_timings as $key => $stop_timing) {
       $trip_id = isset($stop_timing['trip_id']) ?  $stop_timing['trip_id'] :  NULL;
       $trip_id = intval($trip_id);
@@ -470,21 +529,41 @@ class TTADataImporter {
       $st_chunk2 = array_slice($stop_timing,2, NULL, TRUE);
       // code for fare source and destination
       end($st_chunk2);
-      $options['origin_id'] = key ($st_chunk2);
+       $origin_id= key ($st_chunk2);
+       if (strpos($origin_id, '|')!== FALSE) {
+           $temp = explode('|', $origin_id);
+           $options['origin_id'] = $temp[0];
+       } else {
+        $options['origin_id'] = $origin_id;
+       }
       // code for fare destionation
       reset($st_chunk2);
-      $options['destination_id'] = key($st_chunk2);
+      $dest_id = key($st_chunk2);
+
+       if (strpos($dest_id, '|')!== FALSE) {
+           $temp = explode('|', $dest_id);
+           $options['destination_id'] = $temp[0];
+       } else {
+        $options['destination_id'] = $dest_id;
+       }
+
       $i = 1;
       foreach ($st_chunk2 as $stopid => $time) {
-        if (!isset($time) || empty($time)) {
-          continue;
-        }
+        //for remvoing not used stops
+        // if (!isset($time) || empty($time)) {
+        //   continue;
+        // }
         $time = str_pad($time,4,'0',STR_PAD_LEFT);
         $time_cal =  format_date(strtotime($time), 'custom',  'H:i:s');
-        $stop_fields = array_merge($st_chunk1, ['stop_id' =>$stopid, 'arrival_time' => $time_cal, 'trip_id' => $trip_id]);
+        if (strpos($stopid, '|')) {
+           $temp = explode('|', $stopid);
+           $stopid = $temp[0];
+        }
+        $stop_fields = array_merge($st_chunk1, array('stop_id' =>$stopid, 'arrival_time' => $time_cal, 'trip_id' => $trip_id));
         unset($stop_fields['direction']);
         $stop_fields['stop_sequence'] = $i;
         $i++;
+        //dsm($stop_fields,'sf');
         $stop_id = db_merge('stop_times')
                       ->key($stop_fields)
                       ->fields($stop_fields)

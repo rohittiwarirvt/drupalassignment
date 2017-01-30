@@ -142,7 +142,8 @@ function _wb_array_get($array, $keys) {
    $result[$key] =  array_key_exists($key, $array)  ? $array[$key] : NULL;
   }
 
- $result = array_filter($result);
+ $result = array_filter($result, function ($value) {
+    return  !is_null($value);
+    });
  return $result;
-
 }

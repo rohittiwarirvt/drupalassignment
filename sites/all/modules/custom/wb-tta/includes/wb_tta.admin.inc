@@ -98,7 +98,7 @@ function handle_update_ttadata_submit($form, &$form_state) {
 
 function wb_tta_admin_form_callback_action() {
   $agency = "gotriangle";
-  //$route_id = 1;
+  $route_id = 1;
   $query = db_select('agencies','a');
   if (isset($agency)) {
     $query->condition('a.agency_name', $agency,'=');
@@ -134,19 +134,18 @@ function wb_tta_admin_form_callback_action() {
   //route_fares
     $query->leftJoin('stops', 's','s.stop_id=st.stop_id');
     $query->fields('s', array('stop_id','stop_name','latitude','longitude'));
-        dpq($query);
     $trips = $query->execute()
           ->fetchAll(PDO::FETCH_ASSOC) ;
 
     $trips = _wb_tta_group_by($trips,'trip_id');
     $result['routes'][$key] = $route;
     foreach ($trips as  $trip_key=> $stops) {
-      foreach ($stops as $stop_key => $stop) {        
+      foreach ($stops as $stop_key => $stop) {
          if (!isset($result['routes'][$key]['trips'][$trip_key])){
             $result['routes'][$key]['trips'][$trip_key] = _wb_array_get($stop, array('trip_id', 'direction_id','direction_name'));
           }
          if (!isset($result['routes'][$key]['trips'][$trip_key]['services'])) {
-            $result['routes'][$key]['trips'][$trip_key]['services'] =_wb_array_get($stop, array('service_name','is_available_monday','is_available_tuesday','is_available_wednesday','is_available_thursday','is_available_friday','is_available_saturday','is_available_sunday','start_date','end_date'));        
+            $result['routes'][$key]['trips'][$trip_key]['services'] =_wb_array_get($stop, array('service_name','is_available_monday','is_available_tuesday','is_available_wednesday','is_available_thursday','is_available_friday','is_available_saturday','is_available_sunday','start_date','end_date'));
           }
         $result['routes'][$key]['trips'][$trip_key]['stop_times'][$stop_key] =_wb_array_get($stop, array('stop_id', 'arrival_time','stop_sequence','trip_id'));
         $result['routes'][$key]['trips'][$trip_key]['stop_times'][$stop_key]['stops'] =_wb_array_get($stop, array('stop_id', 'stop_code','stop_name','latitude', 'longitude','created'));
@@ -156,17 +155,17 @@ function wb_tta_admin_form_callback_action() {
     }
   }
 
-  // dsm($result);
+  dsm($result);
   //  // extracter
-   $agency = "gotriangle";
-  // $dataRetriever = new TTADataRetriever($agency);
-  // // $tta_zip_filepath = drupal_realpath($form_state['storage']['tta_file_upload']->uri);
-  // // $dataRetriever->extractFiles($tta_zip_filepath);
+  //  $agency = "gotriangle";
+  // // $dataRetriever = new TTADataRetriever($agency);
+  // // // $tta_zip_filepath = drupal_realpath($form_state['storage']['tta_file_upload']->uri);
+  // // // $dataRetriever->extractFiles($tta_zip_filepath);
 
-  // //
+  // // //
   // $dataImporter = new TTADataImporter();
   // $dataImporter->setAgency($agency);
-  // $dataImporter->setBaseDir("sites/default/files/tta_scratch/gotriangle/test2/");
+  // $dataImporter->setBaseDir("sites/default/files/tta_scratch/gotriangle/demo/");
 
 
   // $_SESSION['http_request_count'] = 0;
@@ -200,7 +199,7 @@ function _wb_tta_group_by($arr, $key) {
     }
   }
 
-  return $result;  
+  return $result;
 }
 
 function batch_example_batch($input){
