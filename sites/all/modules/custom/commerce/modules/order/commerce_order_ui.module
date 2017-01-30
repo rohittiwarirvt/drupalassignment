@@ -1,0 +1,150 @@
+<?php
+
+/**
+ * @file
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function commerce_order_ui_menu() {
+  $items = array();
+    // Note: admin/commerce/orders is defined by a default View.
+
+  // Create an order.
+  $items['admin/commerce/orders/add'] = array(
+    'title' => 'Create an order',
+    'description' => 'Create a new order.',
+    'page callback' => 'commerce_order_ui_order_form_wrapper',
+    'access callback' => 'commerce_order_access',
+    'access arguments' => array('create'),
+    'weight' => 10,
+    'file' => 'includes/commerce_order_ui.orders.inc',
+  );
+
+    $items['admin/commerce/orders/add/%user'] = array(
+    'title' => 'Create an order',
+    'description' => 'Create a new order for the specified user.',
+    'page callback' => 'commerce_order_ui_order_form_wrapper',
+    'page arguments' => array(NULL, 4),
+    'access callback' => 'commerce_order_access',
+    'access arguments' => array('create'),
+    'file' => 'includes/commerce_order_ui.orders.inc',
+  );
+
+  $items['admin/commerce/orders/%commerce_order'] = array(
+    'title callback' => 'commerce_order_ui_order_title',
+    'title arguments' => array(3),
+    'page callback' => 'commerce_order_ui_order_view',
+    'page arguments' => array(3),
+    'access callback' => 'commerce_order_admin_order_view_access',
+    'access arguments' => array(3),
+  );
+
+   $items['admin/commerce/orders/%commerce_order/view'] = array(
+    'title' => 'View',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10,
+    'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+  );
+
+  $items['admin/commerce/orders/%commerce_order/edit'] = array(
+    'title' => 'Edit',
+    'page callback' => 'commerce_order_ui_order_form_wrapper',
+    'page arguments' => array(3),
+    'access callback' => 'commerce_order_access',
+    'access arguments' => array('update', 3),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => -5,
+    'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+    'file' => 'includes/commerce_order_ui.orders.inc',
+  );
+
+  $items['admin/commerce/orders/%commerce_order/delete'] = array(
+    'title' => 'Delete',
+    'page callback' => 'commerce_order_ui_order_delete_form_wrapper',
+    'page arguments' => array(3),
+    'access callback' => 'commerce_order_access',
+    'access arguments' => array('delete', 3),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 20,
+    'context' => MENU_CONTEXT_INLINE,
+    'file' => 'includes/commerce_order_ui.orders.inc',
+  );
+
+  $items['admin/commerce/config/order'] = array(
+    'title' => 'Order settings',
+    'description' => 'Configure general order settings, fields, and displays.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('commerce_order_settings_form'),
+    'access arguments' => array('configure order settings'),
+    'file' => 'includes/commerce_order_ui.orders.inc',
+  );
+  $items['admin/commerce/config/order/settings'] = array(
+    'title' => 'Settings',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10,
+  );
+
+  $items['user/%user/orders/%commerce_order'] = array(
+    'title callback' => 'commerce_order_ui_order_title',
+    'title arguments' => array(3),
+    'page callback' => 'commerce_order_ui_order_view',
+    'page arguments' => array(3, 'customer'),
+    'access callback' => 'commerce_order_customer_order_view_access',
+    'access arguments' => array(3),
+  );
+
+  return $items;
+}
+
+
+/**
+ * Implements hook_forms().
+ */
+function commerce_order_ui_forms($form_id, $args) {
+  $forms = array();
+ 
+  // Define a wrapper ID for the order add / edit form.
+  $forms['commerce_order_ui_order_form'] = array(
+    'callback' => 'commerce_order_order_form',
+  );
+
+  // Define a wrapper ID for the order delete confirmation form.
+  $forms['commerce_order_ui_order_delete_form'] = array(
+    'callback' => 'commerce_order_order_delete_form',
+  );
+
+   return $forms;
+}
+
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ *
+ * The Order UI module instantiates the Order add/edit form at particular paths
+ * in the Commerce IA. It uses its own form ID to do so and alters the form
+ * here to add in appropriate redirection.
+ *
+ * @see commerce_order_ui_order_form()
+ */
+function commerce_order_ui_form_commerce_order_ui_order_form_alter(&$form, &$form_state) {
+  // Add a submit handler to the save button to add a redirect.
+  $form['actions']['submit']['#submit'][] = 'commerce_order_ui_order_form_submit';
+  $form['actions']['submit']['#suffix'] = l(t('Cancel'), 'admin/commerce/orders');
+}
+
+
+/**
+ * Submit callback for commerce_order_ui_order_form().
+ *
+ * @see commerce_order_ui_form_commerce_order_ui_order_form_alter()
+ */
+function commerce_order_ui_order_form_submit($form, &$form_state) {
+  // Apply the redirect based on the clicked button.
+  if ($form_state['triggering_element']['#value'] === t('Save order', array(), array('context' => 'a drupal commerce order'))) {
+    drupal_set_message(t('Order saved.'));
+
+    $form_state['redirect'] = 'admin/commerce/orders/' . $form_state['commerce_order']->order_id . '/edit';
+  }
+}

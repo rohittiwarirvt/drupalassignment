@@ -368,3 +368,247 @@ function commerce_currency_convert($amount, $currency_code, $target_currency_cod
   return $amount * ($currency['conversion_rate'] / $target_currency['conversion_rate']);
 }
 
+
+
+
+/**
+ * Converts a price amount to an integer value for storage in the database.
+ *
+ * @param $decimal
+ *   The decimal amount to convert to a price amount.
+ * @param $currency_code
+ *   The currency code of the price whose decimals value will be used to
+ *     multiply by the proper factor when converting the decimal amount.
+ * @param $round
+ *   Whether or not the return value should be rounded and cast to an integer;
+ *     defaults to TRUE as necessary for standard price amount column storage.
+ *
+ * @return
+ *   The appropriate price amount based on the currency's decimals value.
+ */
+function commerce_currency_decimal_to_amount($decimal, $currency_code, $round = TRUE) {
+  static $factors;
+
+  // If the divisor for this currency hasn't been calculated yet...
+  if (empty($factors[$currency_code])) {
+    // Load the currency and calculate its factor as a power of 10.
+    $currency = commerce_currency_load($currency_code);
+    $factors[$currency_code] = pow(10, $currency['decimals']);
+  }
+
+  // Ensure the amount has the proper number of decimal places for the currency.
+  if ($round) {
+    $decimal = commerce_currency_round($decimal, commerce_currency_load($currency_code));
+    return (int) round($decimal * $factors[$currency_code]);
+  }
+  else {
+    return $decimal * $factors[$currency_code];
+  }
+}
+
+
+/**
+ * Rounds a price amount for the specified currency.
+ *
+ * Rounding of the minor unit with a currency specific step size. For example,
+ * Swiss Francs are rounded using a step size of 0.05. This means a price of
+ * 10.93 is converted to 10.95.
+ *
+ * @param $amount
+ *   The numeric amount value of the price to be rounded.
+ * @param $currency
+ *   The currency array containing the rounding information pertinent to this
+ *     price. Specifically, this function looks for the 'rounding_step' property
+ *     for the step size to round to, supporting '0.05' and '0.02'. If the value
+ *     is 0, this function performs normal rounding to the nearest supported
+ *     decimal value.
+ *
+ * @return
+ *   The rounded numeric amount value for the price.
+ */
+function commerce_currency_round($amount, $currency) {
+  if (!$currency['rounding_step']) {
+    return round($amount, $currency['decimals']);
+  }
+
+  $modifier = 1 / $currency['rounding_step'];
+
+  return round($amount * $modifier) / $modifier;
+}
+
+/**
+ * Wraps commerce_currency_get_code() for use by the Entity module.
+ */
+function commerce_currency_code_options_list() {
+  return commerce_currency_get_code(TRUE);
+}
+
+
+
+/**
+ * Generic implementation of hook_query_alter() for Drupal Commerce entities.
+ */
+function commerce_entity_access_query_alter($query, $entity_type, $base_table = NULL, $account = NULL) {
+  global $user;
+
+    // Read the account from the query if available or default to the current user.
+  if (!isset($account) && !$account = $query->getMetaData('account')) {
+    $account = $user;
+  }
+
+
+  // Do not apply any conditions for users with administrative view permissions.
+  if (user_access('administer ' . $entity_type . ' entities', $account)
+    || user_access('view any ' . $entity_type . ' entity', $account)) {
+    return;
+  }
+
+  // Get the entity type info array for the current access check and prepare a
+  // conditions object.
+  $entity_info = entity_get_info($entity_type);
+  // If a base table wasn't specified, attempt to read it from the query if
+  // available, look for a table in the query's tables array that matches the
+  // base table of the given entity type, or just default to the first table.
+  if (!isset($base_table) && !$base_table = $query->getMetaData('base_table')) {
+    // Initialize the base table to the first table in the array. If a table can
+    // not be found that matches the entity type's base table, this will result
+    // in an invalid query if the first table is not the table we expect,
+    // forcing the caller to actually properly pass a base table in that case.
+    $tables = $query->getTables();
+    reset($tables);
+    $base_table = key($tables);
+    foreach ($tables as $table_info) {
+      if (!($table_info instanceof SelectQueryInterface)) {
+        // If this table matches the entity type's base table, use its table
+        // alias as the base table for the purposes of bundle and ownership
+        // access checks.
+        if ($table_info['table'] == $entity_info['base table']) {
+          $base_table = $table_info['alias'];
+        }
+      }
+    }
+  }
+
+  // Prepare an OR container for conditions. Conditions will be added that seek
+  // to grant access, meaning any particular type of permission check may grant
+  // access even if none of the others apply. At the end of this function, if no
+  // conditions have been added to the array, a condition will be added that
+  // always returns FALSE (1 = 0).
+  $conditions = db_or();
+
+  // Perform bundle specific permission checks for the specified entity type.
+  // In the event that the user has permission to view every bundle of the given
+  // entity type, $really_restricted will remain FALSE, indicating that it is
+  // safe to exit this function without applying any additional conditions. If
+  // the user only had such permission for a subset of the defined bundles,
+  // conditions representing those access checks would still be added.
+  $really_restricted = FALSE;
+
+  // Loop over every possible bundle for the given entity type.
+  foreach ($entity_info['bundles'] as $bundle_name => $bundle_info) {
+    // If the user has access to view entities of the current bundle...
+    if (user_access('view any ' . $entity_type . ' entity of bundle ' . $bundle_name, $account)) {
+      // Add a condition granting access if the entity specified by the view
+      // query is of the same bundle.
+      $conditions->condition($base_table . '.' . $entity_info['entity keys']['bundle'], $bundle_name);
+    }
+    elseif ($account->uid && !empty($entity_info['access arguments']['user key']) && user_access('view own ' . $entity_type . ' entities of bundle ' . $bundle_name, $account)) {
+      // Otherwise if an authenticated user has access to view his own entities
+      // of the current bundle and the given entity type has a user ownership key...
+      $really_restricted = TRUE;
+
+      // Add an AND condition group that grants access if the entity specified
+      // by the view query matches the same bundle and belongs to the user.
+      $conditions->condition(db_and()
+        ->condition($base_table . '.' . $entity_info['entity keys']['bundle'], $bundle_name)
+        ->condition($base_table . '.' . $entity_info['access arguments']['user key'], $account->uid)
+      );
+    }
+    else {
+      $really_restricted = TRUE;
+    }
+  }
+
+  // No further conditions need to be added to the query if we determined above
+  // that the user has an administrative view permission for any entity of the
+  // type and bundles represented by the query.
+  if (!$really_restricted) {
+    return;
+  }
+
+  // If the given entity type has a user ownership key...
+  if (!empty($entity_info['access arguments']['user key'])) {
+    // Perform 'view own' access control for the entity in the query if the user
+    // is authenticated.
+    if ($account->uid && user_access('view own ' . $entity_type . ' entities', $account)) {
+      $conditions->condition($base_table . '.' . $entity_info['access arguments']['user key'], $account->uid);
+    }
+  }
+
+  // Prepare an array of condition alter hooks to invoke and an array of context
+  // data for the current query.
+  $hooks = array(
+    'commerce_entity_access_condition_' . $entity_type,
+    'commerce_entity_access_condition'
+  );
+
+  $context = array(
+    'account' => $account,
+    'entity' => $query->getMetaData('entity'),
+    'entity_type' => $entity_type,
+    'base_table' => $base_table
+  );
+
+  // Allow other modules to add conditions to the array as necessary.
+  drupal_alter($hooks, $conditions, $context);
+
+  // If we have more than one condition based on the entity access permissions
+  // and any hook implementations...
+  if (count($conditions)) {
+    // Add the conditions to the query.
+    $query->condition($conditions);
+  }
+  else {
+    // Otherwise, since we don't have any possible conditions to match against,
+    // we falsify this query. View checks are access grants, not access denials.
+    $query->where('1 = 0');
+  }
+}
+
+
+
+/**
+ * Renders a View for display in some other element.
+ *
+ * @param $view_key
+ *   The ID of the View to embed.
+ * @param $display_id
+ *   The ID of the display of the View that will actually be rendered.
+ * @param $arguments
+ *   An array of arguments to pass to the View.
+ * @param $override_url
+ *   A url that overrides the url of the current view.
+ *
+ * @return
+ *   The rendered output of the chosen View display.
+ */
+
+function commerce_embed_view($view_id, $display_id, $arguments, $override_url = '') {
+    // Load the specified View.
+  $view = views_get_view($view_id);
+  $view->set_display($display_id);
+   // Set the specific arguments passed in.
+  $view->set_arguments($arguments);
+
+  // Override the view url, if an override was provided.
+  if (!empty($override_url)) {
+    $view->override_url = $override_url;
+  }
+
+  // Prepare and execute the View query.
+  $view->pre_execute();
+  $view->execute();
+
+  // Return the rendered View.
+  return $view->render();
+}

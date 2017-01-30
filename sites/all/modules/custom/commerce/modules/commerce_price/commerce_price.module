@@ -860,3 +860,16 @@ function commerce_price_component_delete($price, $type) {
 
   return $price['data'];
 }
+
+
+
+/**
+ * Implements hook_views_api().
+ */
+function commerce_price_views_api() {
+  return array(
+    'api' => 3,
+    'path' => drupal_get_path('module', 'commerce_price') . '/includes/views',
+  );
+}
+  
