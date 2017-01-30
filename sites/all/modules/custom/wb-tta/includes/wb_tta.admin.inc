@@ -97,61 +97,112 @@ function handle_update_ttadata_submit($form, &$form_state) {
 }
 
 function wb_tta_admin_form_callback_action() {
-  // $agency = "gotriangle";
-  // $route_id = 1;
-  // $query = db_select('agencies','a');
-  // if (isset($agency)) {
-  //   $query->condition('a.agency_name', $agency,'=');
-  // }
-  // //$query->distinct();
-  // $query->leftJoin('routes', 'r','a.id=r.agency_id');
-  // //routes-field
-  // $query->addField('r', 'id','route_id');
-  // $query->addField('r', 'route_name','route_name');
-  // $query->addField('r', 'route_id','actual_route_id');
+  $agency = "gotriangle";
+//   $route_id = 2;
+//   $query = db_select('agencies','a');
+//   if (isset($agency)) {
+//     $query->condition('a.agency_name', $agency,'=');
+//   }
+//   //$query->distinct();
+//   $query->leftJoin('routes', 'r','a.id=r.agency_id');
+//   //routes-field
+//   $query->addField('r', 'id','route_id');
+//   $query->addField('r', 'route_name','route_name');
+//   $query->addField('r', 'route_id','actual_route_id');
 
-  // if (isset($route_id)) {
-  //   $query->condition('r.id', $route_id,'=');
-  // }
+//   if (isset($route_id)) {
+//     $query->condition('r.id', $route_id,'=');
+//   }
 
 
-  // $result1 = $query->execute()
-  //         ->fetchAll(PDO::FETCH_ASSOC) ;
+//   $result1 = $query->execute()
+//           ->fetchAll(PDO::FETCH_ASSOC) ;
 
-  // $result= array();
+//   $result= array();
+//   $wt_trips =array();
+//   foreach ($result1 as  $key => $route) {
+//    // dsm($route);
+//     $query = db_select('trips','t');
+//   //  $query->addField('t', 'id','prim_trip_id');
+//     $query->addField('t', 'id','trip_id');
+//     $query->fields('t', array('direction_id', 'direction_name'));
+//     $query->condition('t.route_id', $route['route_id'],'=');
+//     $query->leftJoin('services', 'serv','t.service_id=serv.id');
+//     //$query->leftJoin('routes', 'r','t.route_id=r.id');
+//    // $query->leftJoin('agencies', 'a','a.id=r.agency_id');
+//    // $query->condition('a.agency_name', $agency,'=');
+//     //$global_trips =
+//     $query->fields('serv');
+//     $trips = $query->execute()
+//             ->fetchAll(PDO::FETCH_ASSOC) ;
+//              dsm($trips);
+//     // foreach ($trips as $keya => $valuea) {
+//     //  // dsm($valuea);
+//     //   $wt_trips[$keya] = $valuea['trip_id'];
+//     // }
+//     //dsm($wt_trips);
+//     foreach ($trips as $trip_key=> $trip) {
+//      $result['routes'][$key] = $route;
+//      $result['routes'][$key]['trips'][$trip_key] = _wb_array_get($trips, array('trip_id', 'direction_id','direction_name'));
 
-  // foreach ($result1 as  $key => $route) {
-  //  // dsm($route);
-  //   $query = db_select('trips','t');
-  //   $query->addField('t', 'id','trip_id');
-  //   $query->fields('t', array('direction_id', 'direction_name'));
-  //   $query->condition('t.route_id', $route['route_id'],'=');
-  //   $query->leftJoin('services', 'serv','t.service_id=serv.id');
-  //   $query->fields('serv');
-  // //routes
-  //   $query->leftJoin('stop_times', 'st','t.id=st.trip_id');
-  //   $query->fields('st');
-  // //routes-field
+//      $result['routes'][$key]['trips'][$trip_key]['services'] =_wb_array_get($trip, array('service_name','is_available_monday','is_available_tuesday','is_available_wednesday','is_available_thursday','is_available_friday','is_available_saturday','is_available_sunday','start_date','end_date'));
 
-  // //route_fares
-  //   $query->leftJoin('stops', 's','s.stop_id=st.stop_id');
-  //   $query->fields('s', array('stop_id','stop_name','latitude','longitude'));
-  //       dpq($query);
-  //   $trips = $query->execute()
-  //         ->fetchAll(PDO::FETCH_ASSOC) ;
-  // $result['routes'][$key] = $route;
-  //   foreach ($trips as  $trip_key=> $trip) {
-  //     // dsm($trip);
-  //     $result['routes'][$key]['trips'][$trip_key] = _wb_array_get($trip, array('trip_id', 'direction_id','direction_name'));
-  //     $result['routes'][$key]['trips'][$trip_key]['services'] =_wb_array_get($trip, array('service_name','is_available_monday','is_available_tuesday','is_available_wednesday','is_available_thursday','is_available_friday','is_available_saturday','is_available_sunday','start_date','end_date'));
-  //     $result['routes'][$key]['trips'][$trip_key]['stop_times'][] =_wb_array_get($trip, array('stop_id', 'arrival_time','stop_sequence','trip_id'));
-  //     $result['routes'][$key]['trips'][$trip_key]['stop_times']['stops'] =_wb_array_get($trip, array('stop_id', 'stop_code','stop_name','latitude', 'longitude','created'));
-  //   }
-  // }
+//       //routes
+//       //dsm($route);
+//        $query = db_select('trips', 't' );
+//        $query->innerJoin('stop_times', 'st','t.id=st.trip_id');
+//        $query->fields('st');
+//       // $query->condition('t.route_id', $route['route_id'],'=');
+//         $query->condition('t.id',$wt_trips ,'IN');
+//     //routes-field
 
-  // dsm($result);
+//     //route_fares
+//        //$query->leftJoin('stops', 's','s.stop_id=st.stop_id');
+//        //$query->fields('s', array('stop_id','stop_name','latitude','longitude'));
+//        $query->groupBy('st.stop_id');
+//        dpq($query);
+//       $stops = $query->execute()
+//             ->fetchAll(PDO::FETCH_ASSOC) ;
+//              dsm($stops);
+
+
+//     // foreach ($stops as  $stop_key=> $stop) {
+//     //   // dsm($trip);
+//     //    $query = db_select('stops', 's' );
+//     //    $query->fields('s');
+//     //    $query->innerJoin('stop_times', 'st','st.stop_id=s.stop_id');
+//     //    $query->fields('st');
+//     //    $query->innerJoin('trips', 't','t.id=st.trip_id');
+//     //    $query->innerJoin('routes', 'r','t.route_id=r.id');
+//     //    $query->distinct();
+//     //    $query->condition('st.stop_id', $stop['stop_id'],'=');
+//     //    $query->condition('st.trip_id', $trip['trip_id'],'=');
+//     //    $query->condition('r.id', $route['route_id'],'=');
+//     //    $query->leftJoin('routes', 'r','t.route_id=r.id');
+//     //    $query->leftJoin('agencies', 'a','a.id=r.agency_id');
+//     //    $query->condition('a.agency_name', $agency,'=');
+//     //    $result_stops = $query->execute()
+//     //         ->fetchAll(PDO::FETCH_ASSOC) ;
+//     //   dpq($query);
+//     //   dsm($result_stops,"rs");
+//     //   // $result['routes'][$key]['trips'][$trip_key]['services'] =_wb_array_get($trip, array('service_name','is_available_monday','is_available_tuesday','is_available_wednesday','is_available_thursday','is_available_friday','is_available_saturday','is_available_sunday','start_date','end_date'));
+//     //   // $result['routes'][$key]['trips'][$trip_key]['stop_times'][] =_wb_array_get($trip, array('stop_id', 'arrival_time','stop_sequence','trip_id'));
+
+//     //   // $result['routes'][$key]['trips'][$trip_key]['stop_times']['stops'] =_wb_array_get($trip, array('stop_id', 'stop_code','stop_name','latitude', 'longitude','created'));
+//     //   //
+//     //   // foreach ($result_stops as $key => $value) {
+//     //   //   $result['routes'][$key]['trips'][$trip_key]['stop_times'][$key] =_wb_array_get($value, array('stop_id', 'arrival_time','stop_sequence','trip_id'));
+
+//     //   //   $result['routes'][$key]['trips'][$trip_key]['stop_times'][$key]['stops'] =_wb_array_get($value, array('stop_id', 'stop_code','stop_name','latitude', 'longitude','created'));
+//     //   // }
+
+//     //   }
+//     }
+//   }
+
+//    dsm($result);
   //  // extracter
-   $agency = "gotriangle";
+   //$agency = "gotriangle";
   // $dataRetriever = new TTADataRetriever($agency);
   // // $tta_zip_filepath = drupal_realpath($form_state['storage']['tta_file_upload']->uri);
   // // $dataRetriever->extractFiles($tta_zip_filepath);
@@ -168,8 +219,8 @@ function wb_tta_admin_form_callback_action() {
     $dataImporter->readCSV($file->uri);
   }
   drupal_goto("/");
-  // $params['files'] = $files;
-  // $params['dataimporter'] = $dataImporter;
+  $params['files'] = $files;
+  $params['dataimporter'] = $dataImporter;
 
 
   // if (isset($params) && !empty($params['files'])) {
